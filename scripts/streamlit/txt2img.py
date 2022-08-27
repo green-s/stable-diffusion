@@ -146,24 +146,33 @@ hide_streamlit_style = """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
 with st.sidebar:
+    random_seed = st.checkbox("Random", False, key="random_seed")
     seed_col1, seed_col2 = st.columns([2, 1])
-    with seed_col2:
-        random_seed = st.checkbox("Random", False, key="random_seed")
     with seed_col1:
         seed = st.number_input(
             "Seed",
             0,
             2**32,
-            42 if not random_seed else gen_random_seed(),
+            gen_random_seed() if random_seed else int(st.session_state.seed_value) if "seed_value" in st.session_state else 42,
             key="seed",
             disabled=random_seed,
         )
+        st.session_state.seed_value = seed
+    with seed_col2:
+        incr_seed = st.empty()
+        decr_seed = st.empty()
     iteration_seeds = st.selectbox(
         "Iteration Seeds",
         ["Random", "Subsequent"],
         help="Random uses a pseudorandom (deterministic) seed for each subsequent iteration. Subsequent increases the seed by 1 for each subsequent iteration.",
     )
     iterations = st.number_input("Iterations", 1, value=12, key="iterations")
+    def incr_seed_it():
+        st.session_state.seed_value += iterations
+    def decr_seed_it():
+        st.session_state.seed_value -= iterations
+    incr_seed.button("-Imgs", on_click=decr_seed_it, disabled=random_seed)
+    decr_seed.button("+Imgs", on_click=incr_seed_it, disabled=random_seed)
     sampler = st.selectbox(
         "Sampler",
         [
