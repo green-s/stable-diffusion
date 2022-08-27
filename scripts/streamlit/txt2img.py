@@ -153,7 +153,11 @@ with st.sidebar:
             "Seed",
             0,
             2**32,
-            gen_random_seed() if random_seed else int(st.session_state.seed_value) if "seed_value" in st.session_state else 42,
+            gen_random_seed()
+            if random_seed
+            else int(st.session_state.seed_value)
+            if "seed_value" in st.session_state
+            else 42,
             key="seed",
             disabled=random_seed,
         )
@@ -167,10 +171,13 @@ with st.sidebar:
         help="Random uses a pseudorandom (deterministic) seed for each subsequent iteration. Subsequent increases the seed by 1 for each subsequent iteration.",
     )
     iterations = st.number_input("Iterations", 1, value=12, key="iterations")
+
     def incr_seed_it():
         st.session_state.seed_value += iterations
+
     def decr_seed_it():
         st.session_state.seed_value -= iterations
+
     incr_seed.button("-Imgs", on_click=decr_seed_it, disabled=random_seed)
     decr_seed.button("+Imgs", on_click=incr_seed_it, disabled=random_seed)
     sampler = st.selectbox(
@@ -337,7 +344,9 @@ with torch.no_grad():
                             weight = weight / totalWeight
                         c = torch.add(
                             c,
-                            model.get_learned_conditioning(batch_size * [subprompts[i]]),
+                            model.get_learned_conditioning(
+                                batch_size * [subprompts[i]]
+                            ),
                             alpha=weight,
                         )
                 else:  # just standard 1 prompt
