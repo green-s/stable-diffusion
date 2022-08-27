@@ -158,6 +158,11 @@ with st.sidebar:
             key="seed",
             disabled=random_seed,
         )
+    iteration_seeds = st.selectbox(
+        "Iteration Seeds",
+        ["Random", "Subsequent"],
+        help="Random uses a pseudorandom (deterministic) seed for each subsequent iteration. Subsequent increases the seed by 1 for each subsequent iteration.",
+    )
     iterations = st.number_input("Iterations", 1, value=12, key="iterations")
     sampler = st.selectbox(
         "Sampler",
@@ -361,7 +366,10 @@ with torch.no_grad():
 
                 del samples_ddim
 
-            seed = gen_random_seed()
+            if iteration_seeds == "Random":
+                seed = gen_random_seed()
+            else:
+                seed += 1
 
     toc = time.time()
     print(f"{batch_size * iterations} images generated in", "%4.2fs" % (toc - tic))
