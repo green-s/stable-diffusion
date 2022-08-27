@@ -235,6 +235,14 @@ with st.sidebar:
         key="scale",
         help="Adherence to the prompt. Higher values require more steps and can produce color artifacts.",
     )
+    eta_scale = st.number_input(
+        "Eta Scale",
+        0.0,
+        1.0,
+        value=0.0,
+        key="eta_scale",
+        help="Determines the mix between the sampler and DDPM. 0.0 is the sampler, 1.0 is DDPM. Higher values increase noise and require more steps.",
+    )
     skip_normalize = st.checkbox(
         "Skip prompt weight normalization", False, key="skip_normalize"
     )
@@ -288,7 +296,7 @@ init_offset = int(init_offset)
 model = instantiate_model(42)
 start_code = None
 precision_scope = autocast
-ddim_eta = 0.0
+ddim_eta = float(eta_scale)
 latent_channels = 4
 downsampling_factor = 8
 sampler = get_sampler(sampler, model, get_device_name())
