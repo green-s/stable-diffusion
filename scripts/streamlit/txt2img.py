@@ -337,7 +337,7 @@ with torch.no_grad():
                             weight = weight / totalWeight
                         c = torch.add(
                             c,
-                            model.get_learned_conditioning(subprompts[i]),
+                            model.get_learned_conditioning(batch_size * [subprompts[i]]),
                             alpha=weight,
                         )
                 else:  # just standard 1 prompt
