@@ -76,9 +76,20 @@ class KSampler(object):
             'uncond': unconditional_conditioning,
             'cond_scale': unconditional_guidance_scale,
         }
+        _callback = None
+        if callback is not None and img_callback is not None:
+            def _callback(kargs):
+                callback(kargs['i'])
+                img_callback(kargs['x'], kargs['i'])
+        elif img_callback is not None:
+            def _callback(kargs):
+                img_callback(kargs['x'], kargs['i'])
+        elif callback is not None:
+            def _callback(kargs):
+                callback(kargs['i'])
         return (
             K.sampling.__dict__[f'sample_{self.schedule}'](
-                model_wrap_cfg, x, sigmas, extra_args=extra_args
+                model_wrap_cfg, x, sigmas, callback=_callback, extra_args=extra_args
             ),
             None,
         )
