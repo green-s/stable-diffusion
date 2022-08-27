@@ -300,6 +300,7 @@ with prompt_form_slot:
 
         def generate_callback():
             st.session_state.generate = True
+            st.session_state.prompt_text = st.session_state.prompt
 
         st.form_submit_button("Generate", on_click=generate_callback)
     progress = st.progress(0.0)
