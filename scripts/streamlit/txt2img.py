@@ -260,6 +260,13 @@ for i, w in enumerate(image_widgets):
     if k in st.session_state:
         w.image(st.session_state[k])
 
+
+def update_image(i, widgets, model, image):
+    image = decode_image(model, image)
+    st.session_state[f"image_{i}"] = image
+    widgets[i].image(image, output_format="PNG")
+
+
 with prompt_form_slot:
     with st.form("prompt_form"):
         prompt = st.text_input(
@@ -335,9 +342,7 @@ with torch.no_grad():
                         if i % refresh_interval == 0 or (
                             render_initial and i == init_offset
                         ):
-                            image = decode_image(model, img)
-                            st.session_state[f"image_{n}"] = image
-                            image_widgets[n].image(image, output_format="PNG")
+                            update_image(n, image_widgets, model, img)
 
                 samples_ddim, _ = sampler.sample(
                     S=steps,
@@ -352,9 +357,7 @@ with torch.no_grad():
                     img_callback=img_callback,
                 )
 
-                image_widgets[n].image(
-                    decode_image(model, samples_ddim), output_format="PNG"
-                )
+                update_image(n, image_widgets, model, samples_ddim)
 
                 del samples_ddim
 
