@@ -219,7 +219,8 @@ with st.sidebar:
         decr_seed = st.empty()
     iteration_seeds = st.selectbox(
         "Iteration Seeds",
-        ["Random", "Subsequent"],
+        ["Subsequent", "Random"],
+        0,
         help="Random uses a pseudorandom (deterministic) seed for each subsequent iteration. Subsequent increases the seed by 1 for each subsequent iteration.",
     )
     iterations = st.number_input("Iterations", 1, value=8, key="iterations")
