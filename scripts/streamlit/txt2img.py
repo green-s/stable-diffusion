@@ -266,10 +266,9 @@ with st.sidebar:
     )
     scale = st.number_input(
         "Scale",
-        1.0,
         value=7.5,
         key="scale",
-        help="Adherence to the prompt. Higher values require more steps and can produce color artifacts.",
+        help="Adherence to the prompt. Extreme values require more steps and can produce color artifacts.",
     )
     eta_scale = st.number_input(
         "Eta Scale",
