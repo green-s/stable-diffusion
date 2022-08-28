@@ -395,11 +395,19 @@ with prompt_form_slot:
             key="prompt",
         )
 
-        def generate_callback():
-            st.session_state.generate = True
+        def apply_callback():
             st.session_state.regenerate = False
             st.session_state.prompt_text = st.session_state.prompt
 
+        def generate_callback():
+            st.session_state.generate = True
+            apply_callback()
+
+        st.form_submit_button(
+            "Apply",
+            on_click=apply_callback,
+            help="Save the prompt without generating. Will stop generation in progress.",
+        )
         st.form_submit_button("Generate", on_click=generate_callback)
     progress = st.progress(0.0)
 
