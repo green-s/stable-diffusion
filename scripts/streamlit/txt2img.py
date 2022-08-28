@@ -264,12 +264,12 @@ with st.sidebar:
         disabled=not use_regenerate_steps,
         help="Steps to use during image regeneration.",
     )
-    scale = st.number_input(
-        "Scale",
+    cfg_scale = st.number_input(
+        "Cfg Scale",
         -100.0,
         100.0,
         value=7.5,
-        key="scale",
+        key="cfg_scale",
         help="Adherence to the prompt. Extreme values require more steps and can produce color artifacts.",
     )
     eta_scale = st.number_input(
@@ -330,7 +330,7 @@ steps = (
     )
     else int(regenerate_steps)
 )
-scale = float(scale)
+cfg_scale = float(cfg_scale)
 height = int(height)
 width = int(width)
 batch_size = 1
@@ -379,7 +379,7 @@ for i, w in enumerate(image_widget_containers):
             width,
             height,
             steps,
-            scale,
+            cfg_scale,
             not skip_normalize,
             sampler_name,
         )
@@ -476,7 +476,7 @@ with torch.no_grad():
                     else 1.0
                 )
                 uc = None
-                if scale != 1.0:
+                if cfg_scale != 1.0:
                     uc = model.get_learned_conditioning(batch_size * [""])
                 if isinstance(prompts, tuple):
                     prompts = list(prompts)
@@ -524,7 +524,7 @@ with torch.no_grad():
                     batch_size=batch_size,
                     shape=shape,
                     verbose=False,
-                    unconditional_guidance_scale=scale,
+                    unconditional_guidance_scale=cfg_scale,
                     unconditional_conditioning=uc,
                     eta=ddim_eta,
                     x_T=start_code,
