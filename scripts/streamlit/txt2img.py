@@ -467,7 +467,13 @@ with torch.no_grad():
             seed_everything(seed)
             st.session_state[f"image_{n}_seed"] = seed
             for prompts in tqdm(data, desc="data", dynamic_ncols=True):
-                progress.progress(float(n) / float(batch_size * iterations - 1))
+                progress.progress(
+                    float(n) / float(batch_size * iterations - 1)
+                    if not (
+                        "regenerate" in st.session_state and st.session_state.regenerate
+                    )
+                    else 1.0
+                )
                 uc = None
                 if scale != 1.0:
                     uc = model.get_learned_conditioning(batch_size * [""])
