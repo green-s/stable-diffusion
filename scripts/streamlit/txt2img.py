@@ -266,7 +266,8 @@ with st.sidebar:
     )
     scale = st.number_input(
         "Scale",
-        1.0,
+        -100.0,
+        100.0,
         value=7.5,
         key="scale",
         help="Adherence to the prompt. Extreme values require more steps and can produce color artifacts.",
