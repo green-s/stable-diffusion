@@ -247,12 +247,22 @@ with st.sidebar:
         2,
         key="sampler",
     )
-    steps = st.number_input(
+    steps_col1, steps_col2, steps_col3 = st.columns([4, 4, 1])
+    steps = steps_col1.number_input(
         "Steps",
-        1,
+        15,
         value=50,
         key="steps",
         help="More steps increases the chance of convergence and reduces noise.",
+    )
+    use_regenerate_steps = steps_col3.checkbox("", True, key="use_regenerate_steps")
+    regenerate_steps = steps_col2.number_input(
+        "Regen Steps",
+        15,
+        value=150,
+        key="regenerate_steps",
+        disabled=not use_regenerate_steps,
+        help="Steps to use during image regeneration.",
     )
     scale = st.number_input(
         "Scale",
@@ -310,7 +320,15 @@ with st.sidebar:
         )
 
 seed = int(seed)
-steps = int(steps)
+steps = (
+    int(steps)
+    if not (
+        "regenerate" in st.session_state
+        and st.session_state.regenerate
+        and use_regenerate_steps
+    )
+    else int(regenerate_steps)
+)
 scale = float(scale)
 height = int(height)
 width = int(width)
