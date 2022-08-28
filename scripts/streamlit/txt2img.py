@@ -13,6 +13,8 @@ from ldm.models.diffusion.ddim import DDIMSampler
 from ldm.models.diffusion.plms import PLMSSampler
 from ldm.models.diffusion.ksampler import KSampler
 from ldm.util import instantiate_from_config
+from PIL import Image
+from PIL.PngImagePlugin import PngInfo
 import streamlit as st
 
 
@@ -134,6 +136,29 @@ def decode_image(model, img):
     return x_sample.astype(np.uint8)
 
 
+def save_image(
+    image,
+    prompt,
+    seed,
+    width,
+    height,
+    steps,
+    cfg_scale,
+    normalize_prompt_weights,
+    sampler_name,
+):
+    metadata = PngInfo()
+    metadata.add_text("SD prompt", str(prompt))
+    metadata.add_text("SD seed", str(seed))
+    metadata.add_text("SD width", str(width))
+    metadata.add_text("SD height", str(height))
+    metadata.add_text("SD steps", str(steps))
+    metadata.add_text("SD cfg_scale", str(cfg_scale))
+    metadata.add_text("SD normalize_prompt_weights", str(normalize_prompt_weights))
+    metadata.add_text("SD sampler_name", str(sampler_name))
+    image.save(f"outputs/{time.strftime('%Y%m%d-%H%M%S')}_{seed}.png", pnginfo=metadata)
+
+
 def check_prompt_length(model, prompt):
     tokenizer = model.cond_stage_model.tokenizer
     max_length = model.cond_stage_model.max_length
@@ -162,6 +187,7 @@ def check_prompt_length(model, prompt):
 
 st.set_page_config(
     page_title="Stable Diffusion",
+    layout="wide",
 )
 st.title("Stable Diffusion")
 hide_streamlit_style = """
@@ -196,7 +222,7 @@ with st.sidebar:
         ["Random", "Subsequent"],
         help="Random uses a pseudorandom (deterministic) seed for each subsequent iteration. Subsequent increases the seed by 1 for each subsequent iteration.",
     )
-    iterations = st.number_input("Iterations", 1, value=12, key="iterations")
+    iterations = st.number_input("Iterations", 1, value=8, key="iterations")
 
     def incr_seed_it():
         st.session_state.seed_value += iterations
@@ -206,7 +232,7 @@ with st.sidebar:
 
     incr_seed.button("-Imgs", on_click=decr_seed_it, disabled=random_seed)
     decr_seed.button("+Imgs", on_click=incr_seed_it, disabled=random_seed)
-    sampler = st.selectbox(
+    sampler_name = st.selectbox(
         "Sampler",
         [
             "DDIM",
@@ -251,7 +277,7 @@ with st.sidebar:
         width = st.number_input("Width", 1, value=512, key="width")
     with height_col:
         height = st.number_input("Height", 1, value=512, key="height")
-    cols = st.number_input("Columns", 1, value=3, key="cols")
+    cols = st.number_input("Columns", 1, value=4, key="cols")
     render_intermediates = st.checkbox(
         "Render intermediates", True, key="render_intermediates"
     )
@@ -299,27 +325,64 @@ precision_scope = autocast
 ddim_eta = float(eta_scale)
 latent_channels = 4
 downsampling_factor = 8
-sampler = get_sampler(sampler, model, get_device_name())
+sampler = get_sampler(sampler_name, model, get_device_name())
 
 prompt_form_slot = st.container()
 
 # TODO support higher batch sizes
 base_count = 0
 image_count = batch_size * int(iterations)
-image_col_count = int(cols)
-image_row_count = math.ceil(image_count / image_col_count)
-image_cols = st.columns(image_col_count)
-image_widgets = [image_cols[i // image_row_count].empty() for i in range(image_count)]
-for i, w in enumerate(image_widgets):
+cols = int(cols)
+rows = math.ceil(image_count / cols)
+image_cols = st.columns(cols)
+image_widget_containers = [image_cols[i % cols].container() for i in range(image_count)]
+image_widgets = []
+blank_image = Image.new("RGB", (width, height))
+for i, w in enumerate(image_widget_containers):
     k = f"image_{i}"
+    k_s = f"{k}_seed"
+    e = w.empty()
+    image_widgets.append(e)
     if k in st.session_state:
-        w.image(st.session_state[k])
+        e.image(
+            st.session_state[k],
+            caption=st.session_state[k_s] if k_s in st.session_state else "",
+            output_format="PNG",
+        )
+    else:
+        e.image(blank_image, output_format="PNG")
+
+    def save_callback(k=k, k_s=k_s):
+        save_image(
+            Image.fromarray(st.session_state[k]),
+            st.session_state.prompt if "prompt" in st.session_state else "",
+            st.session_state[k_s] if k_s in st.session_state else "",
+            width,
+            height,
+            steps,
+            scale,
+            not skip_normalize,
+            sampler_name,
+        )
+
+    w.button(
+        "Save",
+        on_click=save_callback,
+        key=f"{k}_render",
+    )
+
+    def regenerate_callback(i=i):
+        st.session_state.generate = True
+        st.session_state.regenerate = True
+        st.session_state.regenerate_i = i
+
+    w.button("Regenerate", on_click=regenerate_callback, key=f"{k}_regenerate")
 
 
-def update_image(i, widgets, model, image):
+def update_image(i, widgets, model, image, caption=None):
     image = decode_image(model, image)
     st.session_state[f"image_{i}"] = image
-    widgets[i].image(image, output_format="PNG")
+    widgets[i].image(image, output_format="PNG", caption=caption)
 
 
 with prompt_form_slot:
@@ -334,6 +397,7 @@ with prompt_form_slot:
 
         def generate_callback():
             st.session_state.generate = True
+            st.session_state.regenerate = False
             st.session_state.prompt_text = st.session_state.prompt
 
         st.form_submit_button("Generate", on_click=generate_callback)
@@ -356,8 +420,26 @@ tic = time.time()
 
 with torch.no_grad():
     with precision_scope(get_device_name()), model.ema_scope():
-        for n in trange(iterations, desc="Sampling"):
+        if "regenerate" in st.session_state and st.session_state.regenerate:
+            iters = trange(
+                st.session_state.regenerate_i,
+                st.session_state.regenerate_i + 1,
+                desc="Sampling",
+            )
+            k_s = f"image_{st.session_state.regenerate_i}_seed"
+            if k_s in st.session_state:
+                seed = st.session_state[k_s]
+            elif iteration_seeds == "Random":
+                for n in range(st.session_state.regenerate_i):
+                    seed = gen_random_seed()
+            else:
+                seed = seed + st.session_state.regenerate_i
+        else:
+            iters = trange(iterations, desc="Sampling")
+
+        for n in iters:
             seed_everything(seed)
+            st.session_state[f"image_{n}_seed"] = seed
             for prompts in tqdm(data, desc="data", dynamic_ncols=True):
                 progress.progress(float(n) / float(batch_size * iterations - 1))
                 uc = None
@@ -401,7 +483,7 @@ with torch.no_grad():
                         if i % refresh_interval == 0 or (
                             render_initial and i == init_offset
                         ):
-                            update_image(n, image_widgets, model, img)
+                            update_image(n, image_widgets, model, img, seed)
 
                 samples_ddim, _ = sampler.sample(
                     S=steps,
@@ -416,7 +498,7 @@ with torch.no_grad():
                     img_callback=img_callback,
                 )
 
-                update_image(n, image_widgets, model, samples_ddim)
+                update_image(n, image_widgets, model, samples_ddim, seed)
 
                 del samples_ddim
 
