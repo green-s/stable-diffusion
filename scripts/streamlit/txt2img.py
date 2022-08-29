@@ -111,10 +111,15 @@ def split_weighted_subprompts(text):
 
 
 @st.experimental_singleton
+def load_config(config_path):
+    return OmegaConf.load(config_path)
+
+
+@st.experimental_singleton
 def instantiate_model(seed):
     seed_everything(seed)
     try:
-        config = OmegaConf.load(config_path)
+        config = load_config(config_path)
         device = torch.device(get_device_name())
         print(f"Loading model from {ckpt}")
         pl_sd = torch.load(ckpt, map_location="cpu")
@@ -273,6 +278,14 @@ with st.sidebar:
         key="cfg_scale",
         help="Adherence to the prompt. Extreme values require more steps and can produce color artifacts.",
     )
+    exposure = st.number_input(
+        "Exposure",
+        -100.0,
+        100.0,
+        value=1.0,
+        key="exposure",
+        help="Factor by which to divide model's scale_factor. Can be used to offset the over/underexposure caused by changing Cfg Scale.",
+    )
     eta_scale = st.number_input(
         "Eta Scale",
         0.0,
@@ -340,6 +353,7 @@ refresh_interval = int(refresh_interval)
 init_offset = int(init_offset)
 
 model = instantiate_model(42)
+model.scale_factor = load_config(config_path).model.params.scale_factor / exposure
 start_code = None
 precision_scope = autocast
 ddim_eta = float(eta_scale)
