@@ -15,6 +15,12 @@ Currently images are not saved automatically. An image is saved to the `output` 
 is clicked underneath it, with reproduction info saved to its metadata. The images displayed on the
 site do not include the metadata.
 
+## Usage
+
+```
+streamlit run scripts/streamlit/txt2img.py
+```
+
 ![Screenshot](assets/screenshot.jpg)
 
 # Stable Diffusion Dream Script
