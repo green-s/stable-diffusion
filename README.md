@@ -1,3 +1,22 @@
+# Stable Diffusion Flow
+
+This is a fork of lstein's fork adding a Streamlit-based Web UI. Currently only supports txt2img
+but img2img will be added soon, or the whole thing will be rewritten in Svelte due to annoying
+limitations of Streamlit and Gradio.
+
+Unique features of this UI:
+
+- See image generation in progress.
+- Selectively regenerate an image from the grid.
+- Set a default number of steps for regeneration, separate from the base steps (allows for
+  generating low step images then easily regenerating good results with higher steps).
+
+Currently images are not saved automatically. An image is saved to the `output` directory when Save
+is clicked underneath it, with reproduction info saved to its metadata. The images displayed on the
+site do not include the metadata.
+
+![Screenshot](assets/screenshot.jpg)
+
 # Stable Diffusion Dream Script
 
 This is a fork of CompVis/stable-diffusion, the wonderful open source
