@@ -2,6 +2,7 @@ import random
 import math
 import torch
 import numpy as np
+from einops import repeat
 from omegaconf import OmegaConf
 from tqdm import tqdm, trange
 from itertools import islice
@@ -247,6 +248,20 @@ hide_streamlit_style = """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
 with st.sidebar:
+    use_init_image = st.checkbox("Use init image", value=False, key="use_init_image")
+    init_image = None
+    if use_init_image:
+        init_image_upload = st.file_uploader(
+            "Init Image", type=["png", "jpg", "jpeg"], key="init_image_upload"
+        )
+        if init_image_upload is not None:
+            st.session_state.init_image = Image.open(init_image_upload)
+        if "init_image" in st.session_state and st.session_state.init_image is not None:
+            init_image = st.session_state.init_image
+            init_image_viewer = st.image(st.session_state.init_image)
+        image_strength = st.slider(
+            "Image Strength", 0.0, 1.0, 0.25, key="image_strength"
+        )
     random_seed = st.checkbox("Random", False, key="random_seed")
     seed_col1, seed_col2 = st.columns([2, 1])
     with seed_col1:
@@ -515,6 +530,21 @@ st.session_state.generate = False
 
 data = [int(batch_size) * [prompt]]
 
+if use_init_image and init_image is not None:
+    image = init_image.convert("RGB")
+    image = image.resize((width, height), Image.BICUBIC)
+    image = np.array(image).astype(np.float32) / 255.0
+    image = image[None].transpose(0, 3, 1, 2)
+    image = torch.from_numpy(image)
+
+    image = 2.0 * image - 1.0
+    image = image.to(get_device_name())
+    image = repeat(image, "1 ... -> b ...", b=batch_size)
+    init_latent = model.get_first_stage_encoding(
+        model.encode_first_stage(image.half())
+    )  # move to latent space
+    t_enc = int((1.0 - float(image_strength)) * steps)
+
 tic = time.time()
 
 with torch.no_grad():
@@ -631,7 +661,12 @@ with torch.no_grad():
                     else:
                         sigmas = model_k_wrapped.get_sigmas(steps)
 
+                    if init_latent is not None:
+                        sigmas = sigmas[len(sigmas) - t_enc - 1 :]
+
                     x = x_T * sigmas[0]  # for GPU draw
+                    if init_latent is not None:
+                        x = init_latent + x
                     extra_args = {
                         "conditions": (c,),
                         "uncond": uc,
@@ -647,18 +682,31 @@ with torch.no_grad():
                         else None,
                     )
                 else:
-                    samples_ddim, _ = sampler.sample(
-                        S=steps,
-                        conditioning=c,
-                        batch_size=batch_size,
-                        shape=shape,
-                        verbose=False,
-                        unconditional_guidance_scale=cfg_scale,
-                        unconditional_conditioning=uc,
-                        eta=ddim_eta,
-                        x_T=x_T,
-                        img_callback=img_callback,
-                    )
+                    if init_latent is None:
+                        samples_ddim, _ = sampler.sample(
+                            S=steps,
+                            conditioning=c,
+                            batch_size=batch_size,
+                            shape=shape,
+                            verbose=False,
+                            unconditional_guidance_scale=cfg_scale,
+                            unconditional_conditioning=uc,
+                            eta=ddim_eta,
+                            x_T=x_T,
+                            img_callback=img_callback,
+                        )
+                    else:
+                        z_enc = sampler.stochastic_encode(
+                            init_latent,
+                            torch.tensor([t_enc] * batch_size).to(get_device_name()),
+                        )
+                        samples = sampler.decode(
+                            z_enc,
+                            c,
+                            t_enc,
+                            unconditional_guidance_scale=cfg_scale,
+                            unconditional_conditioning=uc,
+                        )
 
                 update_image(n, image_widgets, model, samples_ddim, seed)
 
