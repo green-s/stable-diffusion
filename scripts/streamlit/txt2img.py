@@ -308,7 +308,7 @@ with st.sidebar:
     use_regenerate_steps = steps_col3.checkbox("", True, key="use_regenerate_steps")
     regenerate_steps = steps_col2.number_input(
         "Regen Steps",
-        15,
+        1,
         value=150,
         key="regenerate_steps",
         disabled=not use_regenerate_steps,
@@ -324,7 +324,7 @@ with st.sidebar:
     )
     exposure = st.number_input(
         "Exposure",
-        -100.0,
+        0.01,
         100.0,
         value=1.0,
         key="exposure",
