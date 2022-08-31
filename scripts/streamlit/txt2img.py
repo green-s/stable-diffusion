@@ -250,7 +250,7 @@ with st.sidebar:
             "k_dpm_2",
             "k_dpm_2_a",
         ],
-        2,
+        4,
         key="sampler",
     )
     steps_col1, steps_col2, steps_col3 = st.columns([4, 4, 1])
