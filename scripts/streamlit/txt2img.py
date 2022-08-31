@@ -354,7 +354,7 @@ with st.sidebar:
         "Refresh interval",
         1,
         int(steps),
-        value=15,
+        value=min(15, int(steps)),
         key="refresh_interval",
         disabled=not render_intermediates,
         help="How many steps to wait between refreshing the image. Lower values may decrease performance.",
