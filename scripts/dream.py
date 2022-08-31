@@ -4,13 +4,15 @@
 import argparse
 import shlex
 import os
+import re
 import sys
 import copy
 import warnings
+import time
 import ldm.dream.readline
 from ldm.dream.pngwriter import PngWriter, PromptFormatter
 from ldm.dream.server import DreamServer, ThreadingDreamServer
-
+from ldm.dream.image_util import make_grid
 
 def main():
     """Initialize command-line parsers and the diffusion model"""
@@ -51,6 +53,7 @@ def main():
         weights=weights,
         full_precision=opt.full_precision,
         config=config,
+        grid  = opt.grid,
         # this is solely for recreating the prompt
         latent_diffusion_weights=opt.laion400m,
         embedding_path=opt.embedding_path,
@@ -69,7 +72,7 @@ def main():
     if opt.infile:
         try:
             if os.path.isfile(opt.infile):
-                infile = open(opt.infile, 'r')
+                infile = open(opt.infile, 'r', encoding='utf-8')
             elif opt.infile == '-':  # stdin
                 infile = sys.stdin
             else:
@@ -79,7 +82,11 @@ def main():
             sys.exit(-1)
 
     # preload the model
+    tic = time.time()
     t2i.load_model()
+    print(
+        f'model loaded in', '%4.2fs' % (time.time() - tic)
+    )
 
     if not infile:
         print(
@@ -90,13 +97,22 @@ def main():
     if opt.web:
         dream_server_loop(t2i)
     else:
-        main_loop(t2i, opt.outdir, cmd_parser, infile)
+        main_loop(t2i, opt.outdir, opt.prompt_as_dir, cmd_parser, infile)
 
 
-def main_loop(t2i, outdir, parser, infile):
+def main_loop(t2i, outdir, prompt_as_dir, parser, infile):
     """prompt/read/execute loop"""
     done = False
     last_seeds = []
+    path_filter = re.compile(r'[<>:"/\\|?*]')
+
+    # os.pathconf is not available on Windows
+    if hasattr(os, 'pathconf'):
+        path_max = os.pathconf(outdir, 'PC_PATH_MAX')
+        name_max = os.pathconf(outdir, 'PC_NAME_MAX')
+    else:
+        path_max = 260
+        name_max = 255
 
     while not done:
         try:
@@ -162,34 +178,66 @@ def main_loop(t2i, outdir, parser, infile):
                 opt.seed = None
 
         normalized_prompt = PromptFormatter(t2i, opt).normalize_prompt()
-        individual_images = not opt.grid
+        do_grid           = opt.grid or t2i.grid
+        individual_images = not do_grid
+
         if opt.outdir:
             if not os.path.exists(opt.outdir):
                 os.makedirs(opt.outdir)
             current_outdir = opt.outdir
+        elif prompt_as_dir:
+            # sanitize the prompt to a valid folder name
+            subdir = path_filter.sub('_', opt.prompt)[:name_max].rstrip(' .')
+
+            # truncate path to maximum allowed length
+            # 27 is the length of '######.##########.##.png', plus two separators and a NUL
+            subdir = subdir[:(path_max - 27 - len(os.path.abspath(outdir)))]
+            current_outdir = os.path.join(outdir, subdir)
+
+            print ('Writing files to directory: "' + current_outdir + '"')
+
+            # make sure the output directory exists
+            if not os.path.exists(current_outdir):
+                os.makedirs(current_outdir)
         else:
             current_outdir = outdir
 
         # Here is where the images are actually generated!
         try:
-            file_writer = PngWriter(current_outdir, normalized_prompt, opt.batch_size)
-            callback    = file_writer.write_image if individual_images else None
-            image_list  = t2i.prompt2image(image_callback=callback, **vars(opt))
-            results = (
-                file_writer.files_written if individual_images else image_list
-            )
+            file_writer = PngWriter(current_outdir)
+            prefix = file_writer.unique_prefix()
+            seeds = set()
+            results = []
+            grid_images = dict() # seed -> Image, only used if `do_grid`
+            def image_writer(image, seed, upscaled=False):
+                if do_grid:
+                    grid_images[seed] = image
+                else:
+                    if upscaled and opt.save_original:
+                        filename = f'{prefix}.{seed}.postprocessed.png'
+                    else:
+                        filename = f'{prefix}.{seed}.png'
+                    path = file_writer.save_image_and_prompt_to_png(image, f'{normalized_prompt} -S{seed}', filename)
+                    if (not upscaled) or opt.save_original:
+                        # only append to results if we didn't overwrite an earlier output
+                        results.append([path, seed])
 
-            if opt.grid and len(results) > 0:
-                grid_img = file_writer.make_grid([r[0] for r in results])
-                filename = file_writer.unique_filename(results[0][1])
-                seeds = [a[1] for a in results]
-                results = [[filename, seeds]]
-                metadata_prompt = f'{normalized_prompt} -S{results[0][1]}'
-                file_writer.save_image_and_prompt_to_png(
+                seeds.add(seed)
+
+            t2i.prompt2image(image_callback=image_writer, **vars(opt))
+
+            if do_grid and len(grid_images) > 0:
+                grid_img = make_grid(list(grid_images.values()))
+                first_seed = next(iter(seeds))
+                filename = f'{prefix}.{first_seed}.png'
+                # TODO better metadata for grid images
+                metadata_prompt = f'{normalized_prompt} -S{first_seed}'
+                path = file_writer.save_image_and_prompt_to_png(
                     grid_img, metadata_prompt, filename
                 )
+                results = [[path, seeds]]
 
-            last_seeds = [r[1] for r in results]
+            last_seeds = list(seeds)
 
         except AssertionError as e:
             print(e)
@@ -217,7 +265,7 @@ def get_next_command(infile=None) -> str: #command string
             command = command.strip()
         print(f'#{command}')
     return command
-    
+
 def dream_server_loop(t2i):
     print('\n* --web was specified, starting web server...')
     # Change working directory to the stable-diffusion directory
@@ -244,7 +292,7 @@ def write_log_message(prompt, results, log_path):
     log_lines = [f'{r[0]}: {prompt} -S{r[1]}\n' for r in results]
     print(*log_lines, sep='')
 
-    with open(log_path, 'a') as file:
+    with open(log_path, 'a', encoding='utf-8') as file:
         file.writelines(log_lines)
 
 
@@ -261,7 +309,13 @@ SAMPLER_CHOICES=[
 
 def create_argv_parser():
     parser = argparse.ArgumentParser(
-        description="Parse script's command line args"
+        description="""Generate images using Stable Diffusion.
+        Use --web to launch the web interface. 
+        Use --from_file to load prompts from a file path or standard input ("-").
+        Otherwise you will be dropped into an interactive command prompt (type -h for help.)
+        Other command-line arguments are defaults that can usually be overridden
+        prompt the command prompt.
+"""
     )
     parser.add_argument(
         '--laion400m',
@@ -292,6 +346,12 @@ def create_argv_parser():
         help='Use slower full precision math for calculations',
     )
     parser.add_argument(
+        '-g',
+        '--grid',
+        action='store_true',
+        help='Generate a grid instead of individual images',
+    )
+    parser.add_argument(
         '-A',
         '-m',
         '--sampler',
@@ -320,12 +380,19 @@ def create_argv_parser():
         default='cuda',
         help='Device to run Stable Diffusion on. Defaults to cuda `torch.cuda.current_device()` if avalible',
     )
+    parser.add_argument(
+        '--prompt_as_dir',
+        '-p',
+        action='store_true',
+        help='Place images in subdirectories named after the prompt.',
+    )
     # GFPGAN related args
     parser.add_argument(
         '--gfpgan_bg_upsampler',
         type=str,
         default='realesrgan',
-        help='Background upsampler. Default: None. Options: realesrgan, none.',
+        help='Background upsampler. Default: realesrgan. Options: realesrgan, none. Only used if --gfpgan is specified',
+
     )
     parser.add_argument(
         '--gfpgan_bg_tile',
@@ -374,13 +441,6 @@ def create_cmd_parser():
         help='Number of samplings to perform (slower, but will provide seeds for individual images)',
     )
     parser.add_argument(
-        '-b',
-        '--batch_size',
-        type=int,
-        default=1,
-        help='Number of images to produce per sampling (will not provide seeds for individual images!)',
-    )
-    parser.add_argument(
         '-W', '--width', type=int, help='Image width, multiple of 64'
     )
     parser.add_argument(
@@ -391,7 +451,7 @@ def create_cmd_parser():
         '--cfg_scale',
         default=7.5,
         type=float,
-        help='Prompt configuration scale',
+        help='Classifier free guidance (CFG) scale - higher numbers cause generator to "try" harder.',
     )
     parser.add_argument(
         '-g', '--grid', action='store_true', help='generate a grid'
@@ -461,6 +521,12 @@ def create_cmd_parser():
         choices=SAMPLER_CHOICES,
         metavar='SAMPLER_NAME',
         help=f'Switch to a different sampler. Supported samplers: {", ".join(SAMPLER_CHOICES)}',
+    )
+    parser.add_argument(
+        '-t',
+        '--log_tokenization',
+        action='store_true',
+        help='shows how the prompt is split into tokens'
     )
     return parser
 

@@ -23,10 +23,55 @@ streamlit run scripts/streamlit/txt2img.py
 
 ![Screenshot](assets/screenshot.jpg)
 
-# Stable Diffusion Dream Script
+<h1 align='center'><b>Stable Diffusion Dream Script</b></h1>
+
+<p align='center'>
+<img src="static/logo_temp.png"/>
+</p>
+
+<p align="center">
+    <img src="https://img.shields.io/github/last-commit/lstein/stable-diffusion?logo=Python&logoColor=green&style=for-the-badge" alt="last-commit"/>
+    <img src="https://img.shields.io/github/stars/lstein/stable-diffusion?logo=GitHub&style=for-the-badge" alt="stars"/>
+    <br>
+    <img src="https://img.shields.io/github/issues/lstein/stable-diffusion?logo=GitHub&style=for-the-badge" alt="issues"/>
+    <img src="https://img.shields.io/github/issues-pr/lstein/stable-diffusion?logo=GitHub&style=for-the-badge" alt="pull-requests"/>
+</p>
 
 This is a fork of CompVis/stable-diffusion, the wonderful open source
-text-to-image generator. The original has been improved in several ways:
+text-to-image generator. This fork supports:
+
+1. An interactive command-line interface that accepts the same prompt
+   and switches as the Discord bot.
+
+2. Support for img2img in which you provide a seed image to build on
+   top of.
+
+3. A basic Web interface that allows you to run a local web server for
+   generating images in your browser.
+4. A notebook for running the code on Google Colab.
+
+5. Upscaling and face fixing using the optional ESRGAN and GFPGAN
+   packages.
+
+6. Weighted subprompts for prompt tuning.
+
+7. Textual inversion for customization of the prompt language and images.
+
+8. ...and more!
+
+This fork is rapidly evolving, so use the Issues panel to report bugs
+and make feature requests, and check back periodically for
+improvements and bug fixes.
+
+# Table of Contents
+
+1. [Major Features](#features)
+2. [Changelog](#latest)
+3. [Installation](#installation)
+4. [Troubleshooting](#troubleshooting)
+5. [Support](#support)
+
+# Features
 
 ## Interactive command-line interface similar to the Discord bot
 
@@ -73,6 +118,10 @@ dream> q
 00010.png: "ashley judd riding a camel" -s150 -S 1362479620
 00011.png: "there's a fly in my soup" -n6 -g -S 2685670268
 ```
+
+<p align='center'>
+<img src="static/dream-py-demo.png"/>
+</p>
 
 The dream> prompt's arguments are pretty much identical to those used
 in the Discord bot, except you don't need to type "!dream" (it doesn't
@@ -126,8 +175,7 @@ You can install **Real-ESRGAN** by typing the following command.
 pip install realesrgan
 ```
 
-**Preloading Models**
-
+**Note: Internet connection needed:**
 Users whose GPU machines are isolated from the Internet (e.g. on a
 University cluster) should be aware that the first time you run
 dream.py with GFPGAN and Real-ESRGAN turned on, it will try to
@@ -161,8 +209,7 @@ default to 0.75.
 `-G : <gfpgan_strength>`
 
 This prompt argument controls the strength of the face restoration
-that is being applied. Similar to upscaling, values between `0.5 to
-0.8` are recommended.
+that is being applied. Similar to upscaling, values between `0.5 to 0.8` are recommended.
 
 You can use either one or both without any conflicts. In cases where
 you use both, the image will be first upscaled and then the face
@@ -206,14 +253,22 @@ face restore a particular generated image, pass it again with the same
 prompt and generated seed along with the `-U` and `-G` prompt
 arguments to perform those actions.
 
+## Google Colab
+
+Stable Diffusion AI Notebook: <a href="https://colab.research.google.com/github/lstein/stable-diffusion/blob/main/Stable_Diffusion_AI_Notebook.ipynb" target="_parent"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a> <br>
+Open and follow instructions to use an isolated environment running Dream.<br>
+
+Output example:
+![Colab Notebook](static/colab_notebook.png)
+
 ## Barebones Web Server
 
 As of version 1.10, this distribution comes with a bare bones web
-server (see screenshot). To use it, run the *dream.py* script by
+server (see screenshot). To use it, run the _dream.py_ script by
 adding the **--web** option.
 
 ```
-(ldm) ~/stable-diffusion$ python3 scripts/dream_web.py --web
+(ldm) ~/stable-diffusion$ python3 scripts/dream.py --web
 ```
 
 You can then connect to the server by pointing your web browser at
@@ -267,13 +322,13 @@ face enhancement (see previous section):
 ```
 dream> a cute child playing hopscotch -G0.5
 [...]
-outputs/img-samples/000039.3498014304.png: "a cute child playing hopscotch" -s50 -b1 -W512 -H512 -C7.5 -mk_lms -S3498014304
+outputs/img-samples/000039.3498014304.png: "a cute child playing hopscotch" -s50 -W512 -H512 -C7.5 -mk_lms -S3498014304
 
 # I wonder what it will look like if I bump up the steps and set facial enhancement to full strength?
 dream> a cute child playing hopscotch -G1.0 -s100 -S -1
 reusing previous seed 3498014304
 [...]
-outputs/img-samples/000040.3498014304.png: "a cute child playing hopscotch" -G1.0 -s100 -b1 -W512 -H512 -C7.5 -mk_lms -S3498014304
+outputs/img-samples/000040.3498014304.png: "a cute child playing hopscotch" -G1.0 -s100 -W512 -H512 -C7.5 -mk_lms -S3498014304
 ```
 
 ## Weighted Prompts
@@ -357,102 +412,25 @@ Credit goes to @rinongal and the repository located at
 https://github.com/rinongal/textual_inversion Please see the
 repository and associated paper for details and limitations.
 
-## Changes
+# Latest Changes
 
-- v1.12 (28 August 2022)
+- v1.13 (in process)
 
-  - Improved file handling, including ability to read prompts from standard input.
-    (kudos to [Yunsaki](https://github.com/yunsaki)
-  - The web server is now integrated with the dream.py script. Invoke by adding --web to
-     the dream.py command arguments.
-  - Face restoration and upscaling via GFPGAN and Real-ESGAN are now automatically
-    enabled if the GFPGAN directory is located as a sibling to Stable Diffusion.
-    VRAM requirements are modestly reduced. Thanks to both [Blessedcoolant](https://github.com/blessedcoolant) and
-    [Oceanswave](https://github.com/oceanswave) for their work on this.
-  - You can now swap samplers on the dream> command line. [Blessedcoolant](https://github.com/blessedcoolant)
+  - Supports a Google Colab notebook for a standalone server running on Google hardware [Arturo Mendivil](https://github.com/artmen1516)
+  - WebUI supports GFPGAN/ESRGAN facial reconstruction and upscaling [Kevin Gibbons](https://github.com/bakkot)
+  - WebUI supports incremental display of in-progress images during generation [Kevin Gibbons](https://github.com/bakkot)
+  - Output directory can be specified on the dream> command line.
+  - The grid was displaying duplicated images when not enough images to fill the final row [Muhammad Usama](https://github.com/SMUsamaShah)
+  - Can specify --grid on dream.py command line as the default.
+  - Miscellaneous internal bug and stability fixes.
 
-- v1.11 (26 August 2022)
-  - NEW FEATURE: Support upscaling and face enhancement using the GFPGAN module. (kudos to [Oceanswave](https://github.com/Oceanswave)
-  - You now can specify a seed of -1 to use the previous image's seed, -2 to use the seed for the image generated before that, etc.
-    Seed memory only extends back to the previous command, but will work on all images generated with the -n# switch.
-  - Variant generation support temporarily disabled pending more general solution.
-  - Created a feature branch named **yunsaki-morphing-dream** which adds experimental support for
-    iteratively modifying the prompt and its parameters. Please see[ Pull Request #86](https://github.com/lstein/stable-diffusion/pull/86)
-    for a synopsis of how this works. Note that when this feature is eventually added to the main branch, it will may be modified
-    significantly.
-- v1.10 (25 August 2022)
-  - A barebones but fully functional interactive web server for online generation of txt2img and img2img.
-- v1.09 (24 August 2022)
-  - A new -v option allows you to generate multiple variants of an initial image
-    in img2img mode. (kudos to [Oceanswave](https://github.com/Oceanswave). [
-    See this discussion in the PR for examples and details on use](https://github.com/lstein/stable-diffusion/pull/71#issuecomment-1226700810))
-  - Added ability to personalize text to image generation (kudos to [Oceanswave](https://github.com/Oceanswave) and [nicolai256](https://github.com/nicolai256))
-  - Enabled all of the samplers from k_diffusion
-- v1.08 (24 August 2022)
+For older changelogs, please visit **[CHANGELOGS](CHANGELOG.md)**.
 
-  - Escape single quotes on the dream> command before trying to parse. This avoids
-    parse errors.
-  - Removed instruction to get Python3.8 as first step in Windows install.
-    Anaconda3 does it for you.
-  - Added bounds checks for numeric arguments that could cause crashes.
-  - Cleaned up the copyright and license agreement files.
+# Installation
 
-- v1.07 (23 August 2022)
+There are separate installation walkthroughs for [Linux](#linux), [Windows](#windows) and [Macintosh](#Macintosh)
 
-  - Image filenames will now never fill gaps in the sequence, but will be assigned the
-    next higher name in the chosen directory. This ensures that the alphabetic and chronological
-    sort orders are the same.
-
-- v1.06 (23 August 2022)
-
-  - Added weighted prompt support contributed by [xraxra](https://github.com/xraxra)
-  - Example of using weighted prompts to tweak a demonic figure contributed by [bmaltais](https://github.com/bmaltais)
-
-- v1.05 (22 August 2022 - after the drop)
-
-  - Filenames now use the following formats:
-    000010.95183149.png -- Two files produced by the same command (e.g. -n2),
-    000010.26742632.png -- distinguished by a different seed.
-
-    000011.455191342.01.png -- Two files produced by the same command using
-    000011.455191342.02.png -- a batch size>1 (e.g. -b2). They have the same seed.
-
-    000011.4160627868.grid#1-4.png -- a grid of four images (-g); the whole grid can
-    be regenerated with the indicated key
-
-  - It should no longer be possible for one image to overwrite another
-  - You can use the "cd" and "pwd" commands at the dream> prompt to set and retrieve
-    the path of the output directory.
-
-- v1.04 (22 August 2022 - after the drop)
-
-  - Updated README to reflect installation of the released weights.
-  - Suppressed very noisy and inconsequential warning when loading the frozen CLIP
-    tokenizer.
-
-- v1.03 (22 August 2022)
-
-  - The original txt2img and img2img scripts from the CompViz repository have been moved into
-    a subfolder named "orig_scripts", to reduce confusion.
-
-- v1.02 (21 August 2022)
-
-  - A copy of the prompt and all of its switches and options is now stored in the corresponding
-    image in a tEXt metadata field named "Dream". You can read the prompt using scripts/images2prompt.py,
-    or an image editor that allows you to explore the full metadata.
-    **Please run "conda env update -f environment.yaml" to load the k_lms dependencies!!**
-
-- v1.01 (21 August 2022)
-  - added k_lms sampling.
-    **Please run "conda env update -f environment.yaml" to load the k_lms dependencies!!**
-  - use half precision arithmetic by default, resulting in faster execution and lower memory requirements
-    Pass argument --full_precision to dream.py to get slower but more accurate image generation
-
-## Installation
-
-There are separate installation walkthroughs for [Linux/Mac](#linuxmac) and [Windows](#windows).
-
-### Linux/Mac
+## Linux
 
 1. You will need to install the following prerequisites if they are not already available. Use your
    operating system's preferred installer
@@ -538,7 +516,7 @@ link from the stable-diffusion model.ckpt file, to the true location of the sd-v
 9. Subsequently, to relaunch the script, be sure to run "conda activate ldm" (step 5, second command), enter the "stable-diffusion"
    directory, and then launch the dream script (step 8). If you forget to activate the ldm environment, the script will fail with multiple ModuleNotFound errors.
 
-#### Updating to newer versions of the script
+### Updating to newer versions of the script
 
 This distribution is changing rapidly. If you used the "git clone" method (step 5) to download the stable-diffusion directory, then to update to the latest and greatest version, launch the Anaconda window, enter "stable-diffusion", and type:
 
@@ -548,7 +526,7 @@ This distribution is changing rapidly. If you used the "git clone" method (step 
 
 This will bring your local copy into sync with the remote one.
 
-### Windows
+## Windows
 
 1. Install Anaconda3 (miniconda3 version) from here: https://docs.anaconda.com/anaconda/install/windows/
 
@@ -627,11 +605,22 @@ python scripts\dream.py -l
 python scripts\dream.py
 ```
 
-10. Subsequently, to relaunch the script, first activate the Anaconda command window (step 3), enter the stable-diffusion directory (step 5, "cd \path\to\stable-diffusion"), run "conda activate ldm" (step 6b), and then launch the dream script (step 9).
+10. Subsequently, to relaunch the script, first activate the Anaconda
+command window (step 3), enter the stable-diffusion directory (step 5,
+"cd \path\to\stable-diffusion"), run "conda activate ldm" (step 6b),
+and then launch the dream script (step 9).
 
-#### Updating to newer versions of the script
+**Note:** Tildebyte has written an alternative ["Easy peasy Windows
+install"](https://github.com/lstein/stable-diffusion/wiki/Easy-peasy-Windows-install)
+which uses the Windows Powershell and pew. If you are having trouble
+with Anaconda on Windows, give this a try (or try it first!)
 
-This distribution is changing rapidly. If you used the "git clone" method (step 5) to download the stable-diffusion directory, then to update to the latest and greatest version, launch the Anaconda window, enter "stable-diffusion", and type:
+### Updating to newer versions of the script
+
+This distribution is changing rapidly. If you used the "git clone"
+method (step 5) to download the stable-diffusion directory, then to
+update to the latest and greatest version, launch the Anaconda window,
+enter "stable-diffusion", and type:
 
 ```
 git pull
@@ -639,11 +628,16 @@ git pull
 
 This will bring your local copy into sync with the remote one.
 
-## Simplified API for text to image generation
+## Macintosh
+
+See [README-Mac-MPS](README-Mac-MPS.md) for instructions.
+
+# Simplified API for text to image generation
 
 For programmers who wish to incorporate stable-diffusion into other
-products, this repository includes a simplified API for text to image generation, which
-lets you create images from a prompt in just three lines of code:
+products, this repository includes a simplified API for text to image
+generation, which lets you create images from a prompt in just three
+lines of code:
 
 ```
 from ldm.simplet2i import T2I
@@ -652,9 +646,10 @@ outputs = model.txt2img("a unicorn in manhattan")
 ```
 
 Outputs is a list of lists in the format [[filename1,seed1],[filename2,seed2]...]
-Please see ldm/simplet2i.py for more information.
+Please see ldm/simplet2i.py for more information. A set of example scripts is
+coming RSN.
 
-## Workaround for machines with limited internet connectivity
+# Workaround for machines with limited internet connectivity
 
 My development machine is a GPU node in a high-performance compute
 cluster which has no connection to the internet. During model
@@ -684,12 +679,76 @@ Downloading: "https://github.com/DagnyT/hardnet/raw/master/pretrained/train_libe
 ...success
 ```
 
-If you don't need this change and want to download the files just in
-time, copy over the file ldm/modules/encoders/modules.py from the
-CompVis/stable-diffusion repository. Or you can run preload_models.py
-on the target machine.
+# Troubleshooting
 
-## Support
+Here are a few common installation problems and their solutions. Often
+these are caused by incomplete installations or crashes during the
+install process.
+
+- PROBLEM: During "conda env create -f environment.yaml", conda
+  hangs indefinitely.
+
+- SOLUTION: Enter the stable-diffusion directory and completely
+  remove the "src" directory and all its contents. The safest way
+  to do this is to enter the stable-diffusion directory and
+  give the command "git clean -f". If this still doesn't fix
+  the problem, try "conda clean -all" and then restart at the
+  "conda env create" step.
+
+---
+
+- PROBLEM: dream.py crashes with the complaint that it can't find
+  ldm.simplet2i.py. Or it complains that function is being passed
+  incorrect parameters.
+
+- SOLUTION: Reinstall the stable diffusion modules. Enter the
+  stable-diffusion directory and give the command "pip install -e ."
+
+---
+
+- PROBLEM: dream.py dies, complaining of various missing modules, none
+  of which starts with "ldm".
+
+- SOLUTION: From within the stable-diffusion directory, run "conda env
+  update -f environment.yaml" This is also frequently the solution to
+  complaints about an unknown function in a module.
+
+---
+
+- PROBLEM: There's a feature or bugfix in the Stable Diffusion GitHub
+  that you want to try out.
+
+- SOLUTION: If the fix/feature is on the "main" branch, enter the stable-diffusion
+  directory and do a "git pull". Usually this will be sufficient, but if
+  you start to see errors about missing or incorrect modules, use the
+  command "pip install -e ." and/or "conda env update -f environment.yaml"
+  (These commands won't break anything.)
+
+- If the feature/fix is on a branch (e.g. "foo-bugfix"), the recipe is similar, but
+  do a "git pull <name of branch>".
+
+- If the feature/fix is in a pull request that has not yet been made
+  part of the main branch or a feature/bugfix branch, then from the page
+  for the desired pull request, look for the line at the top that reads
+  "xxxx wants to merge xx commits into lstein:main from YYYYYY". Copy
+  the URL in YYYY. It should have the format
+  https://github.com/<name of contributor>/stable-diffusion/tree/<name
+  of branch>
+
+- Then **go to the directory above stable-diffusion**, and rename the
+  directory to "stable-diffusion.lstein", "stable-diffusion.old", or
+  whatever. You can then git clone the branch that contains the
+  pull request:
+
+```
+git clone https://github.com/<name of contributor>/stable-diffusion/tree/<name
+of branch>
+```
+
+You will need to go through the install procedure again, but it should
+be fast because all the dependencies are already loaded.
+
+# Support
 
 For support,
 please use this repository's GitHub Issues tracking service. Feel free
