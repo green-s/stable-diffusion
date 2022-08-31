@@ -8,9 +8,20 @@ from itertools import islice
 from einops import rearrange
 import time
 from pytorch_lightning import seed_everything
-from torch import autocast
+from torch import autocast, nn
 from ldm.models.diffusion.ddim import DDIMSampler
 from ldm.models.diffusion.plms import PLMSSampler
+from k_diffusion.sampling import (
+    sample_lms,
+    sample_dpm_2,
+    sample_dpm_2_ancestral,
+    sample_euler,
+    sample_euler_ancestral,
+    sample_heun,
+    get_sigmas_karras,
+    make_quantizer,
+)
+from k_diffusion.external import CompVisDenoiser
 from ldm.models.diffusion.ksampler import KSampler
 from ldm.util import instantiate_from_config
 from PIL import Image
@@ -20,6 +31,26 @@ import streamlit as st
 
 config_path = "configs/stable-diffusion/v1-inference.yaml"
 ckpt = "models/ldm/stable-diffusion-v1/model.ckpt"
+
+# samplers from the Karras et al paper
+KARRAS_SAMPLERS = {"k_heun", "k_euler", "k_dpm_2"}
+NON_KARRAS_K_DIFF_SAMPLERS = {"k_lms", "k_dpm_2_a", "k_euler_a"}
+K_DIFF_SAMPLERS = {*KARRAS_SAMPLERS, *NON_KARRAS_K_DIFF_SAMPLERS}
+NOT_K_DIFF_SAMPLERS = {"DDIM", "PLMS"}
+VALID_SAMPLERS = {*K_DIFF_SAMPLERS, *NOT_K_DIFF_SAMPLERS}
+
+
+class KCFGDenoiser(nn.Module):
+    def __init__(self, model):
+        super().__init__()
+        self.inner_model = model
+
+    def forward(self, x, sigma, uncond, cond, cond_scale):
+        x_in = torch.cat([x] * 2)
+        sigma_in = torch.cat([sigma] * 2)
+        cond_in = torch.cat([uncond, cond])
+        uncond, cond = self.inner_model(x_in, sigma_in, cond=cond_in).chunk(2)
+        return uncond + (cond - uncond) * cond_scale
 
 
 def chunk(it, size):
@@ -250,13 +281,26 @@ with st.sidebar:
             "k_dpm_2",
             "k_dpm_2_a",
         ],
-        4,
+        3,
         key="sampler",
+    )
+    karras_col1, karras_col2 = st.columns(2)
+    use_karras = karras_col1.checkbox(
+        "Karras Noise",
+        True,
+        key="use_karras",
+        help=f"Use noise schedule from arXiv:2206.00364. Can speed up convergence. Implemented for k-diffusion samplers, {K_DIFF_SAMPLERS}, but you should probably use it with one of the samplers introduced in the same paper: {KARRAS_SAMPLERS}.",
+    )
+    force_discretization = karras_col2.checkbox(
+        "Force Discretization",
+        False,
+        key="force_discretization",
+        help=f"Force timestep discretization for unsupported k-diffusion schedulers ({NON_KARRAS_K_DIFF_SAMPLERS}). Experimental but may improve convergence speed for those samplers.",
     )
     steps_col1, steps_col2, steps_col3 = st.columns([4, 4, 1])
     steps = steps_col1.number_input(
         "Steps",
-        15,
+        1,
         value=50,
         key="steps",
         help="More steps increases the chance of convergence and reduces noise.",
@@ -354,12 +398,17 @@ init_offset = int(init_offset)
 
 model = instantiate_model(42)
 model.scale_factor = load_config(config_path).model.params.scale_factor / exposure
+if sampler_name in K_DIFF_SAMPLERS:
+    model_k_wrapped = CompVisDenoiser(model)
+    model_k_config = KCFGDenoiser(model_k_wrapped)
+else:
+    sampler = get_sampler(sampler_name, model, get_device_name())
 start_code = None
 precision_scope = autocast
 ddim_eta = float(eta_scale)
 latent_channels = 4
 downsampling_factor = 8
-sampler = get_sampler(sampler_name, model, get_device_name())
+no_zero_sigma = True
 
 prompt_form_slot = st.container()
 
@@ -524,6 +573,16 @@ with torch.no_grad():
                     width // downsampling_factor,
                 ]
 
+                if start_code is None:
+                    rand_size = [batch_size, *shape]
+                    x_T = (
+                        torch.randn(rand_size, device="cpu").to(get_device_name())
+                        if get_device_name() == "mps"
+                        else torch.randn(rand_size, device=get_device_name())
+                    )
+                else:
+                    x_T = start_code
+
                 img_callback = None
                 if render_intermediates:
 
@@ -533,18 +592,75 @@ with torch.no_grad():
                         ):
                             update_image(n, image_widgets, model, img, seed)
 
-                samples_ddim, _ = sampler.sample(
-                    S=steps,
-                    conditioning=c,
-                    batch_size=batch_size,
-                    shape=shape,
-                    verbose=False,
-                    unconditional_guidance_scale=cfg_scale,
-                    unconditional_conditioning=uc,
-                    eta=ddim_eta,
-                    x_T=start_code,
-                    img_callback=img_callback,
-                )
+                if sampler_name in K_DIFF_SAMPLERS:
+                    if sampler_name == "k_dpm_2":
+                        sampling_fn = sample_dpm_2
+                    elif sampler_name == "k_dpm_2_a":
+                        sampling_fn = sample_dpm_2_ancestral
+                    elif sampler_name == "k_heun":
+                        sampling_fn = sample_heun
+                    elif sampler_name == "k_euler":
+                        sampling_fn = sample_euler
+                    elif sampler_name == "k_euler_a":
+                        sampling_fn = sample_euler_ancestral
+                    elif sampler_name == "k_lms":
+                        sampling_fn = sample_lms
+                    else:
+                        sampling_fn = sample_heun
+
+                    noise_schedule_sampler_args = {}
+
+                    # Karras sampling schedule achieves higher FID in fewer steps
+                    # https://arxiv.org/abs/2206.00364
+                    if use_karras:
+                        sigmas = get_sigmas_karras(
+                            n=steps,
+                            # 0.0292
+                            sigma_min=model_k_wrapped.sigmas[0].item(),
+                            # 14.6146
+                            sigma_max=model_k_wrapped.sigmas[-1].item(),
+                            rho=7.0,
+                            device=get_device_name(),
+                            # zero would be smaller than sigma_min
+                            concat_zero=not no_zero_sigma,
+                        )
+                    else:
+                        sigmas = model_k_wrapped.get_sigmas(steps)
+
+                    if sampler_name in KARRAS_SAMPLERS:
+                        noise_schedule_sampler_args[
+                            "decorate_sigma_hat"
+                        ] = make_quantizer(model_k_wrapped.sigmas)
+
+                    x = x_T * sigmas[0]  # for GPU draw
+                    extra_args = {
+                        "cond": c,
+                        "uncond": uc,
+                        "cond_scale": cfg_scale,
+                    }
+                    samples_ddim = sampling_fn(
+                        model_k_config,
+                        x,
+                        sigmas,
+                        extra_args=extra_args,
+                        callback=(lambda kargs: img_callback(kargs["x"], kargs["i"]))
+                        if render_intermediates
+                        else None,
+                        **noise_schedule_sampler_args,
+                    )
+                else:
+                    samples_ddim, _ = sampler.sample(
+                        S=steps,
+                        conditioning=c,
+                        batch_size=batch_size,
+                        shape=shape,
+                        verbose=False,
+                        unconditional_guidance_scale=cfg_scale,
+                        unconditional_conditioning=uc,
+                        eta=ddim_eta,
+                        x_T=x_T,
+                        img_callback=img_callback,
+                    )
 
                 update_image(n, image_widgets, model, samples_ddim, seed)
 
