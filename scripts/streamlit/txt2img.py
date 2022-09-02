@@ -309,7 +309,7 @@ with st.sidebar:
     regenerate_steps = steps_col2.number_input(
         "Regen Steps",
         1,
-        value=50,
+        value=75,
         key="regenerate_steps",
         disabled=not use_regenerate_steps,
         help="Steps to use during image regeneration.",
