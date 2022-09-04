@@ -427,7 +427,7 @@ if use_init_image and init_image is not None:
             else init_image
         )
         .convert("RGB")
-        .resize((width, height), Image.BICUBIC)
+        .resize((width, height), Image.Resampling.BICUBIC)
     )
 
 seed = int(seed)
@@ -563,7 +563,7 @@ data = [int(batch_size) * [prompt]]
 
 if use_init_image and init_image is not None:
     image = init_image.convert("RGB")
-    image = image.resize((width, height), Image.BICUBIC)
+    image = image.resize((width, height), Image.Resampling.BICUBIC)
     image = np.array(image).astype(np.float32) / 255.0
     image = image[None].transpose(0, 3, 1, 2)
     image = torch.from_numpy(image)
