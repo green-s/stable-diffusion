@@ -544,6 +544,8 @@ if use_init_image and init_image is not None:
         model.encode_first_stage(image.half())
     )  # move to latent space
     t_enc = int((1.0 - float(image_strength)) * steps)
+else:
+    init_latent = None
 
 tic = time.time()
 
