@@ -18,7 +18,7 @@ site do not include the metadata.
 ## Usage
 
 ```
-streamlit run scripts/streamlit/txt2img.py
+streamlit run scripts/streamlit/app.py
 ```
 
 ![Screenshot](assets/screenshot.jpg)
