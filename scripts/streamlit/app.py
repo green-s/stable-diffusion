@@ -545,14 +545,15 @@ with prompt_form_slot:
         )
         st.form_submit_button("Generate", on_click=generate_callback)
     progress = st.progress(0.0)
+    error_message = st.empty()
 
     if "generate" not in st.session_state or not st.session_state.generate:
         st.stop()
     if use_init_image and init_image is None:
-        st.error("Please provide an initial image")
+        error_message.error("Please provide an initial image")
         st.stop()
     if prompt == "":
-        st.error("Please enter a prompt")
+        error_message.error("Please enter a prompt")
         st.stop()
     st.session_state.prompt_text = prompt
     check_prompt_length(model, prompt)
@@ -729,6 +730,11 @@ with torch.no_grad():
                             img_callback=img_callback,
                         )
                     else:
+                        if sampler_name == "PLMS":
+                            error_message.error(
+                                "Generating with init image does not currently work with PLMS."
+                            )
+                            st.stop()
                         z_enc = sampler.stochastic_encode(
                             init_latent,
                             torch.tensor([t_enc] * batch_size).to(get_device_name()),
