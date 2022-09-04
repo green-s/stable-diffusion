@@ -267,11 +267,6 @@ with st.sidebar:
                     "Show cropper", value=False, key="show_cropper"
                 )
             init_image_viewer = st.empty()
-            init_image_viewer.image(
-                st.session_state.init_image_cropped
-                if crop_image and "init_image_cropped" in st.session_state
-                else init_image
-            )
         image_strength = st.slider(
             "Image Strength", 0.0, 1.0, 0.25, key="image_strength"
         )
@@ -423,6 +418,15 @@ if use_init_image and init_image is not None:
     if crop_image and "init_image_cropped" in st.session_state:
         init_image = st.session_state.init_image_cropped
         init_image_viewer.image(st.session_state.init_image_cropped)
+    init_image_viewer.image(
+        (
+            st.session_state.init_image_cropped
+            if crop_image and "init_image_cropped" in st.session_state
+            else init_image
+        )
+        .convert("RGB")
+        .resize((width, height), Image.BICUBIC)
+    )
 
 seed = int(seed)
 steps = (
