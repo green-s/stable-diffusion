@@ -267,6 +267,8 @@ with st.sidebar:
                     "Show cropper", value=False, key="show_cropper"
                 )
             init_image_viewer = st.empty()
+        elif "init_image_cropped" in st.session_state:
+            del st.session_state.init_image_cropped
         image_strength = st.slider(
             "Image Strength", 0.0, 1.0, 0.25, key="image_strength"
         )
