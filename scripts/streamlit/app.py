@@ -255,10 +255,8 @@ with st.sidebar:
             "Init Image", type=["png", "jpg", "jpeg"], key="init_image_upload"
         )
         if init_image_upload is not None:
-            st.session_state.init_image = Image.open(init_image_upload)
-        if "init_image" in st.session_state and st.session_state.init_image is not None:
-            init_image = st.session_state.init_image
-            init_image_viewer = st.image(st.session_state.init_image)
+            init_image = Image.open(init_image_upload)
+            init_image_viewer = st.image(init_image)
         image_strength = st.slider(
             "Image Strength", 0.0, 1.0, 0.25, key="image_strength"
         )
