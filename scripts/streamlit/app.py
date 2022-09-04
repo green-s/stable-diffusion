@@ -28,6 +28,7 @@ from ldm.util import instantiate_from_config
 from PIL import Image
 from PIL.PngImagePlugin import PngInfo
 import streamlit as st
+from streamlit_cropper import st_cropper
 
 
 config_path = "configs/stable-diffusion/v1-inference.yaml"
@@ -250,13 +251,27 @@ st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 with st.sidebar:
     use_init_image = st.checkbox("Use init image", value=False, key="use_init_image")
     init_image = None
+    show_cropper = False
     if use_init_image:
         init_image_upload = st.file_uploader(
             "Init Image", type=["png", "jpg", "jpeg"], key="init_image_upload"
         )
         if init_image_upload is not None:
             init_image = Image.open(init_image_upload)
-            init_image_viewer = st.image(init_image)
+            crop_col1, crop_col2 = st.columns(2)
+            crop_image = crop_col1.checkbox(
+                "Crop init image", value=False, key="crop_image"
+            )
+            if crop_image:
+                show_cropper = crop_col2.checkbox(
+                    "Show cropper", value=False, key="show_cropper"
+                )
+            init_image_viewer = st.empty()
+            init_image_viewer.image(
+                st.session_state.init_image_cropped
+                if crop_image and "init_image_cropped" in st.session_state
+                else init_image
+            )
         image_strength = st.slider(
             "Image Strength", 0.0, 1.0, 0.25, key="image_strength"
         )
@@ -398,6 +413,16 @@ with st.sidebar:
             disabled=not render_intermediates,
             help="Offset step of the initial image to render.",
         )
+
+if use_init_image and init_image is not None:
+    if show_cropper:
+        init_image_cropped = st_cropper(
+            init_image, aspect_ratio=(1, 1), key="init_image_cropper"
+        )
+        st.session_state.init_image_cropped = init_image_cropped
+    if crop_image and "init_image_cropped" in st.session_state:
+        init_image = st.session_state.init_image_cropped
+        init_image_viewer.image(st.session_state.init_image_cropped)
 
 seed = int(seed)
 steps = (

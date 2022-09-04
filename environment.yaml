@@ -20,6 +20,7 @@ dependencies:
     - omegaconf==2.1.1
     - test-tube>=0.7.5
     - streamlit==1.12.2
+    - streamlit-cropper==0.2.0
     - pillow==9.2.0
     - einops==0.3.0
     - torch-fidelity==0.3.0
