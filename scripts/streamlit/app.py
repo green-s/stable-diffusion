@@ -540,13 +540,15 @@ with prompt_form_slot:
         st.form_submit_button("Generate", on_click=generate_callback)
     progress = st.progress(0.0)
 
+    if "generate" not in st.session_state or not st.session_state.generate:
+        st.stop()
+    if use_init_image and init_image is None:
+        st.error("Please provide an initial image")
+        st.stop()
     if prompt == "":
         st.error("Please enter a prompt")
         st.stop()
-    elif "generate" not in st.session_state or not st.session_state.generate:
-        st.stop()
-    else:
-        st.session_state.prompt_text = prompt
+    st.session_state.prompt_text = prompt
     check_prompt_length(model, prompt)
 
 st.session_state.generate = False
