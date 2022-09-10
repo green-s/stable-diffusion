@@ -24,6 +24,7 @@ from k_diffusion.sampling import (
 )
 from k_diffusion.external import CompVisDenoiser
 from ldm.models.diffusion.ksampler import KSampler
+from ldm.models.diffusion.normalize_latent import normalize_latent
 from ldm.util import instantiate_from_config
 from PIL import Image
 from PIL.PngImagePlugin import PngInfo
@@ -45,9 +46,16 @@ VALID_SAMPLERS = {*K_DIFF_SAMPLERS, *NOT_K_DIFF_SAMPLERS}
 class KCFGDenoiser(nn.Module):
     inner_model: CompVisDenoiser
 
-    def __init__(self, model: CompVisDenoiser):
+    def __init__(
+        self,
+        model: CompVisDenoiser,
+        rescale: bool = False,
+        rescaling_coeff: float = 1.7,
+    ):
         super().__init__()
         self.inner_model = model
+        self.rescale = rescale
+        self.rescaling_coeff = rescaling_coeff
 
     def forward(
         self,
@@ -65,7 +73,10 @@ class KCFGDenoiser(nn.Module):
             1 + conditions_len
         )
         cond = torch.sum(torch.stack(conditions), dim=0) / conditions_len
-        return uncond + (cond - uncond) * cond_scale
+        x_out = uncond + (cond - uncond) * cond_scale
+        if self.rescale:
+            x_out = normalize_latent(x_out, self.rescaling_coeff, 0.975)
+        return x_out
 
 
 def chunk(it, size):
@@ -87,25 +98,31 @@ def get_device_name():
         return "cpu"
 
 
-def get_sampler(sampler_name, model, device):
+def get_sampler(sampler_name, model, device, rescale=False, rescaling_coeff=1.7):
+    kargs = {
+        "model": model,
+        "device": device,
+        "rescale": rescale,
+        "rescaling_coeff": rescaling_coeff,
+    }
     if sampler_name == "PLMS":
-        return PLMSSampler(model, device=device)
+        return PLMSSampler(**kargs)
     elif sampler_name == "DDIM":
-        return DDIMSampler(model, device=device)
+        return DDIMSampler(**kargs)
     elif sampler_name == "k_dpm_2_a":
-        return KSampler(model, "dpm_2_ancestral", device=device)
+        return KSampler(schedule="dpm_2_ancestral", **kargs)
     elif sampler_name == "k_dpm_2":
-        return KSampler(model, "dpm_2", device=device)
+        return KSampler(schedule="dpm_2", **kargs)
     elif sampler_name == "k_euler_a":
-        return KSampler(model, "euler_ancestral", device=device)
+        return KSampler(schedule="euler_ancestral", **kargs)
     elif sampler_name == "k_euler":
-        return KSampler(model, "euler", device=device)
+        return KSampler(schedule="euler", **kargs)
     elif sampler_name == "k_heun":
-        return KSampler(model, "heun", device=device)
+        return KSampler(schedule="heun", **kargs)
     elif sampler_name == "k_lms":
-        return KSampler(model, "lms", device=device)
+        return KSampler(schedule="lms", **kargs)
     else:
-        return KSampler(model, "lms", device=device)
+        return KSampler(schedule="lms", **kargs)
 
 
 def split_weighted_subprompts(text):
@@ -355,6 +372,20 @@ with st.sidebar:
         key="cfg_scale",
         help="Adherence to the prompt. Extreme values require more steps and can produce color artifacts.",
     )
+    should_normalize_latent = st.checkbox(
+        "Normalize Latent",
+        False,
+        key="normalize_latent",
+        help="Normalize the latent image during sampling. This prevents color issues at high CFG scales, but can produce slightly undersaturated images at lower (~7) scales.",
+    )
+    rescaling_coefficient = st.number_input(
+        "Rescaling Coefficient",
+        0.0,
+        value=1.7,
+        key="rescaling_coefficient",
+        help="Rescaling coefficient for the latent image normalization. This can be used to tune the saturation.",
+        disabled=not should_normalize_latent,
+    )
     exposure = st.number_input(
         "Exposure",
         0.01,
@@ -452,9 +483,17 @@ model = instantiate_model(42)
 model.scale_factor = load_config(config_path).model.params.scale_factor / exposure
 if sampler_name in K_DIFF_SAMPLERS:
     model_k_wrapped = CompVisDenoiser(model, quantize=True)
-    model_k_config = KCFGDenoiser(model_k_wrapped)
+    model_k_config = KCFGDenoiser(
+        model_k_wrapped, should_normalize_latent, rescaling_coefficient
+    )
 else:
-    sampler = get_sampler(sampler_name, model, get_device_name())
+    sampler = get_sampler(
+        sampler_name,
+        model,
+        get_device_name(),
+        should_normalize_latent,
+        rescaling_coefficient,
+    )
 start_code = None
 precision_scope = autocast
 ddim_eta = float(eta_scale)
@@ -700,6 +739,10 @@ with torch.no_grad():
 
                     x = x_T * sigmas[0]  # for GPU draw
                     if init_latent is not None:
+                        if should_normalize_latent:
+                            init_latent = normalize_latent(
+                                init_latent, rescaling_coefficient, 0.975
+                            )
                         x = init_latent + x
                     extra_args = {
                         "conditions": (c,),

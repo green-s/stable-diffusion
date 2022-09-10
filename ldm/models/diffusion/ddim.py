@@ -5,6 +5,7 @@ import numpy as np
 from tqdm import tqdm
 from functools import partial
 from ldm.dream.devices import choose_torch_device
+from ldm.models.diffusion.normalize_latent import normalize_latent
 
 from ldm.modules.diffusionmodules.util import (
     make_ddim_sampling_parameters,
@@ -15,12 +16,22 @@ from ldm.modules.diffusionmodules.util import (
 
 
 class DDIMSampler(object):
-    def __init__(self, model, schedule='linear', device=None, **kwargs):
+    def __init__(
+        self,
+        model,
+        schedule='linear',
+        device=None,
+        rescale: bool = False,
+        rescaling_coeff: float = 1.7,
+        **kwargs,
+    ):
         super().__init__()
         self.model = model
         self.ddpm_num_timesteps = model.num_timesteps
         self.schedule = schedule
         self.device   = device or choose_torch_device()
+        self.rescale = rescale
+        self.rescaling_coeff = rescaling_coeff
 
     def register_buffer(self, name, attr):
         if type(attr) == torch.Tensor:
@@ -243,6 +254,8 @@ class DDIMSampler(object):
                     x0, ts
                 )  # TODO: deterministic forward pass?
                 img = img_orig * mask + (1.0 - mask) * img
+                if self.rescale:
+                    img = normalize_latent(img, self.rescaling_coeff, 0.975)
 
             outs = self.p_sample_ddim(
                 img,
