@@ -75,7 +75,7 @@ class KCFGDenoiser(nn.Module):
         cond = torch.sum(torch.stack(conditions), dim=0) / conditions_len
         x_out = uncond + (cond - uncond) * cond_scale
         if self.rescale:
-            x_out = normalize_latent(x_out, self.rescaling_coeff, 0.975)
+            x_out = normalize_latent(x_out, self.rescaling_coeff)
         return x_out
 
 
@@ -374,7 +374,7 @@ with st.sidebar:
     )
     should_normalize_latent = st.checkbox(
         "Normalize Latent",
-        False,
+        True,
         key="normalize_latent",
         help="Normalize the latent image during sampling. This prevents color issues at high CFG scales, but can produce slightly undersaturated images at lower (~7) scales.",
     )
@@ -740,9 +740,7 @@ with torch.no_grad():
                     x = x_T * sigmas[0]  # for GPU draw
                     if init_latent is not None:
                         if should_normalize_latent:
-                            init_latent = normalize_latent(
-                                init_latent, rescaling_coefficient, 0.975
-                            )
+                            init_latent = normalize_latent(init_latent, rescaling_coefficient)
                         x = init_latent + x
                     extra_args = {
                         "conditions": (c,),

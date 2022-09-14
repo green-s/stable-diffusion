@@ -263,7 +263,7 @@ class PLMSSampler(object):
                 )  # TODO: deterministic forward pass?
                 img = img_orig * mask + (1.0 - mask) * img
                 if self.rescale:
-                    img = normalize_latent(img, self.rescaling_coeff, 0.975)
+                    img = normalize_latent(img, self.rescaling_coeff)
 
             outs = self.p_sample_plms(
                 img,

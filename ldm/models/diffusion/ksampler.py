@@ -19,7 +19,7 @@ class CFGDenoiser(nn.Module):
         uncond, cond = self.inner_model(x_in, sigma_in, cond=cond_in).chunk(2)
         x_out = uncond + (cond - uncond) * cond_scale
         if self.rescale:
-            x_out = normalize_latent(x_out, self.rescaling_coeff, 0.975)
+            x_out = normalize_latent(x_out, self.rescaling_coeff)
         return x_out
 
 
