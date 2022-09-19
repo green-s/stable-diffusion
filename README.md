@@ -29,6 +29,11 @@ streamlit run scripts/streamlit/app.py
 
 ![project logo](docs/assets/logo.png)
 
+<p align='center'>
+  <a href="https://discord.gg/ZmtBAhwWhy"><img src="docs/assets/join-us-on-discord-image.png"/></a>
+</p>
+
+# **Stable Diffusion Dream Script**
 [![discord badge]][discord link]
 
 [![latest release badge]][latest release link] [![github stars badge]][github stars link] [![github forks badge]][github forks link]
@@ -139,9 +144,10 @@ To run in full-precision mode, start `dream.py` with the `--full_precision` flag
 - [Seamless Tiling](docs/features/OTHER.md#seamless-tiling)
 - [Google Colab](docs/features/OTHER.md#google-colab)
 - [Web Server](docs/features/WEB.md)
-- [Reading Prompts From File](docs/features/OTHER.md#reading-prompts-from-a-file)
+- [Reading Prompts From File](docs/features/PROMPTS.md#reading-prompts-from-a-file)
 - [Shortcut: Reusing Seeds](docs/features/OTHER.md#shortcuts-reusing-seeds)
-- [Weighted Prompts](docs/features/OTHER.md#weighted-prompts)
+- [Weighted Prompts](docs/features/PROMPTS.md#weighted-prompts)
+- [Negative/Unconditioned Prompts](docs/features/PROMPTS.md#negative-and-unconditioned-prompts)
 - [Variations](docs/features/VARIATIONS.md)
 - [Personalizing Text-to-Image Generation](docs/features/TEXTUAL_INVERSION.md)
 - [Simplified API for text to image generation](docs/features/OTHER.md#simplified-api)
