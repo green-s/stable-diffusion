@@ -27,6 +27,15 @@ streamlit run scripts/streamlit/app.py
 
 # InvokeAI: A Stable Diffusion Toolkit
 
+_Note: This fork is rapidly evolving. Please use the
+[Issues](https://github.com/invoke-ai/InvokeAI/issues) tab to
+report bugs and make feature requests. Be sure to use the provided
+templates. They will help aid diagnose issues faster._
+
+_This repository was formally known as lstein/stable-diffusion_
+
+# **Table of Contents**
+
 ![project logo](docs/assets/logo.png)
 
 [![discord badge]][discord link]
@@ -41,7 +50,7 @@ streamlit run scripts/streamlit/app.py
 [CI checks on dev link]: https://github.com/invoke-ai/InvokeAI/actions?query=branch%3Adevelopment
 [CI checks on main badge]: https://flat.badgen.net/github/checks/invoke-ai/InvokeAI/main?label=CI%20status%20on%20main&cache=900&icon=github
 [CI checks on main link]: https://github.com/invoke-ai/InvokeAI/actions/workflows/test-dream-conda.yml
-[discord badge]: https://flat.badgen.net/discord/members/htRgbc7e?icon=discord
+[discord badge]: https://flat.badgen.net/discord/members/ZmtBAhwWhy?icon=discord
 [discord link]: https://discord.gg/ZmtBAhwWhy
 [github forks badge]: https://flat.badgen.net/github/forks/invoke-ai/InvokeAI?icon=github
 [github forks link]: https://useful-forks.github.io/?repo=invoke-ai%2FInvokeAI

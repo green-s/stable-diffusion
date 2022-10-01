@@ -8,20 +8,23 @@ hide:
 
 ## **Interactive Command Line Interface**
 
-The `dream.py` script, located in `scripts/dream.py`, provides an interactive interface to image
-generation similar to the "dream mothership" bot that Stable AI provided on its Discord server.
+The `dream.py` script, located in `scripts/dream.py`, provides an interactive
+interface to image generation similar to the "dream mothership" bot that Stable
+AI provided on its Discord server.
 
 Unlike the `txt2img.py` and `img2img.py` scripts provided in the original
-[CompVis/stable-diffusion](https://github.com/CompVis/stable-diffusion) source code repository, the
-time-consuming initialization of the AI model initialization only happens once. After that image
-generation from the command-line interface is very fast.
+[CompVis/stable-diffusion](https://github.com/CompVis/stable-diffusion) source
+code repository, the time-consuming initialization of the AI model
+initialization only happens once. After that image generation from the
+command-line interface is very fast.
 
-The script uses the readline library to allow for in-line editing, command history (++up++ and
-++down++), autocompletion, and more. To help keep track of which prompts generated which images, the
-script writes a log file of image names and prompts to the selected output directory.
+The script uses the readline library to allow for in-line editing, command
+history (++up++ and ++down++), autocompletion, and more. To help keep track of
+which prompts generated which images, the script writes a log file of image
+names and prompts to the selected output directory.
 
-In addition, as of version 1.02, it also writes the prompt into the PNG file's metadata where it can
-be retrieved using `scripts/images2prompt.py`
+In addition, as of version 1.02, it also writes the prompt into the PNG file's
+metadata where it can be retrieved using `scripts/images2prompt.py`
 
 The script is confirmed to work on Linux, Windows and Mac systems.
 
@@ -56,21 +59,24 @@ dream> q
 
 ![dream-py-demo](../assets/dream-py-demo.png)
 
-The `dream>` prompt's arguments are pretty much identical to those used in the Discord bot, except
-you don't need to type "!dream" (it doesn't hurt if you do). A significant change is that creation
-of individual images is now the default unless `--grid` (`-g`) is given. A full list is given in
+The `dream>` prompt's arguments are pretty much identical to those used in the
+Discord bot, except you don't need to type "!dream" (it doesn't hurt if you do).
+A significant change is that creation of individual images is now the default
+unless `--grid` (`-g`) is given. A full list is given in
 [List of prompt arguments](#list-of-prompt-arguments).
 
 ## Arguments
 
-The script itself also recognizes a series of command-line switches that will change important
-global defaults, such as the directory for image outputs and the location of the model weight files.
+The script itself also recognizes a series of command-line switches that will
+change important global defaults, such as the directory for image outputs and
+the location of the model weight files.
 
 ### List of arguments recognized at the command line
 
-These command-line arguments can be passed to `dream.py` when you first run it from the Windows, Mac
-or Linux command line. Some set defaults that can be overridden on a per-prompt basis (see [List of
-prompt arguments] (#list-of-prompt-arguments). Others
+These command-line arguments can be passed to `dream.py` when you first run it
+from the Windows, Mac or Linux command line. Some set defaults that can be
+overridden on a per-prompt basis (see [List of prompt arguments]
+(#list-of-prompt-arguments). Others
 
 | Argument <img width="240" align="right"/> | Shortcut <img width="100" align="right"/> | Default <img width="320" align="right"/>       | Description                                                                                          |
 | ----------------------------------------- | ----------------------------------------- | ---------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
@@ -90,157 +96,229 @@ prompt arguments] (#list-of-prompt-arguments). Others
 | `--seamless`                              |                                           | `False`                                        | Create interesting effects by tiling elements of the image.                                          |
 | `--embedding_path <path>`                 |                                           | `None`                                         | Path to pre-trained embedding manager checkpoints, for custom models                                 |
 | `--gfpgan_dir`                            |                                           | `src/gfpgan`                                   | Path to where GFPGAN is installed.                                                                   |
-| `--gfpgan_model_path`                     |                                           | `experiments/pretrained_models/GFPGANv1.3.pth` | Path to GFPGAN model file, relative to `--gfpgan_dir`.                                               |
+| `--gfpgan_model_path`                     |                                           | `experiments/pretrained_models/GFPGANv1.4.pth` | Path to GFPGAN model file, relative to `--gfpgan_dir`.                                               |
 | `--device <device>`                       | `-d<device>`                              | `torch.cuda.current_device()`                  | Device to run SD on, e.g. "cuda:0"                                                                   |
+| `--free_gpu_mem`                          |                                           | `False`                                        | Free GPU memory after sampling, to allow image decoding and saving in low VRAM conditions            |
+| `--precision`                             |                                           | `auto`                                         | Set model precision, default is selected by device. Options: auto, float32, float16, autocast        |
 
 #### deprecated
 
 These arguments are deprecated but still work:
 
-<figure markdown>
 
-| Argument           | Shortcut | Default | Description                                                     |
-| ------------------ | -------- | ------- | --------------------------------------------------------------- |
-| `--weights <path>` |          | `None`  | Pth to weights file; use `--model stable-diffusion-1.4` instead |
-| `--laion400m`      | `-l`     | `False` | Use older LAION400m weights; use `--model=laion400m` instead    |
+| Argument           |  Shortcut  |  Default            |  Description |
+|--------------------|------------|---------------------|--------------|
+| --weights <path>   |            | None                | Pth to weights file; use `--model stable-diffusion-1.4` instead |
+| --laion400m        | -l         | False               | Use older LAION400m weights; use `--model=laion400m` instead |
 
-</figure>
+**A note on path names:** On Windows systems, you may run into
+  problems when passing the dream script standard backslashed path
+  names because the Python interpreter treats "\" as an escape.
+  You can either double your slashes (ick): C:\\\\path\\\\to\\\\my\\\\file, or
+  use Linux/Mac style forward slashes (better): C:/path/to/my/file.
 
-!!! note
+## List of prompt arguments
 
-    On Windows systems, you may run into problems when passing the dream script standard backslashed
-    path names because the Python interpreter treats `\` as an escape. You can either double your
-    slashes (ick): `C:\\path\\to\\my\\file`, or use Linux/Mac style forward slashes (better):
-    `C:/path/to/my/file`.
+After the dream.py script initializes, it will present you with a
+**dream>** prompt. Here you can enter information to generate images
+from text (txt2img), to embellish an existing image or sketch
+(img2img), or to selectively alter chosen regions of the image
+(inpainting).
 
-### List of prompt arguments
+### This is an example of txt2img:
 
-After the `dream.py` script initializes, it will present you with a **`dream>`** prompt. Here you
-can enter information to generate images from text (txt2img), to embellish an existing image or
-sketch (img2img), or to selectively alter chosen regions of the image (inpainting).
+~~~~
+dream> waterfall and rainbow -W640 -H480
+~~~~
 
-#### txt2img
+This will create the requested image with the dimensions 640 (width)
+and 480 (height).
 
-!!! example
+Here are the dream> command that apply to txt2img:
 
-    ```bash
-    dream> "waterfall and rainbow" -W640 -H480
-    ```
+| Argument           |  Shortcut  |  Default            |  Description |
+|--------------------|------------|---------------------|--------------|
+| "my prompt"        |            |                    | Text prompt to use. The quotation marks are optional. |
+| --width <int>      | -W<int>   | 512                 | Width of generated image |
+| --height <int>     | -H<int>   | 512                 | Height of generated image |
+| --iterations <int> | -n<int>   | 1                   | How many images to generate from this prompt |
+| --steps <int>      | -s<int>   | 50                  | How many steps of refinement to apply |
+| --cfg_scale <float>| -C<float> | 7.5                 | How hard to try to match the prompt to the generated image; any number greater than 1.0 works, but the useful range is roughly 5.0 to 20.0 |
+| --seed <int>       | -S<int>   | None                | Set the random seed for the next series of images. This can be used to recreate an image generated previously.|
+| --sampler <sampler>| -A<sampler>| k_lms              | Sampler to use. Use -h to get list of available samplers. |
+| --grid             | -g        | False               | Turn on grid mode to return a single image combining all the images generated by this prompt |
+| --individual       | -i        | True                | Turn off grid mode (deprecated; leave off --grid instead) |
+| --outdir <path>    |  -o<path> | outputs/img_samples  | Temporarily change the location of these images |
+| --seamless         |           | False               | Activate seamless tiling for interesting effects |
+| --log_tokenization | -t        | False               | Display a color-coded list of the parsed tokens derived from the prompt |
+| --skip_normalization| -x       | False               | Weighted subprompts will not be normalized. See [Weighted Prompts](./OTHER.md#weighted-prompts) |
+| --upscale <int> <float> | -U <int> <float> | -U 1 0.75| Upscale image by magnification factor (2, 4), and set strength of upscaling (0.0-1.0). If strength not set, will default to 0.75. |
+| --gfpgan_strength <float>  | -G <float> | -G0        | Fix faces using the GFPGAN algorithm; argument indicates how hard the algorithm should try (0.0-1.0) |
+| --save_original    | -save_orig| False               | When upscaling or fixing faces, this will cause the original image to be saved rather than replaced. |
+| --variation <float>  |-v<float>| 0.0                 | Add a bit of noise (0.0=none, 1.0=high) to the image in order to generate a series of variations. Usually used in combination with -S<seed> and -n<int> to generate a series a riffs on a starting image. See [Variations](./VARIATIONS.md). |
+| --with_variations <pattern> | -V<pattern>| None      | Combine two or more variations. See [Variations](./VARIATIONS.md) for now to use this. |
 
-    This will create the requested image with the dimensions 640 (width) and 480 (height).
+Note that the width and height of the image must be multiples of
+64. You can provide different values, but they will be rounded down to
+the nearest multiple of 64.
 
-Those are the `dream` commands that apply to txt2img:
 
-| Argument <img width="680" align="right"/> | Shortcut <img width="420" align="right"/> | Default <img width="480" align="right"/> | Description                                                                                                                                                                                                                                      |
-| ----------------------------------------- | ----------------------------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `"my prompt"`                             |                                           |                                          | Text prompt to use. The quotation marks are optional.                                                                                                                                                                                            |
-| `--width <int>`                           | `-W<int>`                                 | `512`                                    | Width of generated image                                                                                                                                                                                                                         |
-| `--height <int>`                          | `-H<int>`                                 | `512`                                    | Height of generated image                                                                                                                                                                                                                        |
-| `--iterations <int>`                      | `-n<int>`                                 | `1`                                      | How many images to generate from this prompt                                                                                                                                                                                                     |
-| `--steps <int>`                           | `-s<int>`                                 | `50`                                     | How many steps of refinement to apply                                                                                                                                                                                                            |
-| `--cfg_scale <float>`                     | `-C<float>`                               | `7.5`                                    | How hard to try to match the prompt to the generated image; any number greater than 0.0 works, but the useful range is roughly 5.0 to 20.0                                                                                                       |
-| `--seed <int>`                            | `-S<int>`                                 | `None`                                   | Set the random seed for the next series of images. This can be used to recreate an image generated previously.                                                                                                                                   |
-| `--sampler <sampler>`                     | `-A<sampler>`                             | `k_lms`                                  | Sampler to use. Use `-h` to get list of available samplers.                                                                                                                                                                                      |
-| `--grid`                                  | `-g`                                      | `False`                                  | Turn on grid mode to return a single image combining all the images generated by this prompt                                                                                                                                                     |
-| `--individual`                            | `-i`                                      | `True`                                   | Turn off grid mode (deprecated; leave off `--grid` instead)                                                                                                                                                                                      |
-| `--outdir <path>`                         | `-o<path>`                                | `outputs/img_samples`                    | Temporarily change the location of these images                                                                                                                                                                                                  |
-| `--seamless`                              |                                           | `False`                                  | Activate seamless tiling for interesting effects                                                                                                                                                                                                 |
-| `--log_tokenization`                      | `-t`                                      | `False`                                  | Display a color-coded list of the parsed tokens derived from the prompt                                                                                                                                                                          |
-| `--skip_normalization`                    | `-x`                                      | `False`                                  | Weighted subprompts will not be normalized. See [Weighted Prompts](./OTHER.md#weighted-prompts)                                                                                                                                                  |
-| `--upscale <int> <float>`                 | `-U <int> <float>`                        | `-U 1 0.75`                              | Upscale image by magnification factor (2, 4), and set strength of upscaling (0.0-1.0). If strength not set, will default to 0.75.                                                                                                                |
-| `--gfpgan_strength <float>`               | `-G <float>`                              | `-G0`                                    | Fix faces using the GFPGAN algorithm; argument indicates how hard the algorithm should try (0.0-1.0)                                                                                                                                             |
-| `--save_original`                         | `-save_orig`                              | `False`                                  | When upscaling or fixing faces, this will cause the original image to be saved rather than replaced.                                                                                                                                             |
-| `--variation <float>`                     | `-v<float>`                               | `0.0`                                    | Add a bit of noise (0.0=none, 1.0=high) to the image in order to generate a series of variations. Usually used in combination with `-S<seed>` and `-n<int>` to generate a series a riffs on a starting image. See [Variations](./VARIATIONS.md). |
-| `--with_variations <pattern>`             | `-V<pattern>`                             | `None`                                   | Combine two or more variations. See [Variations](./VARIATIONS.md) for now to use this.                                                                                                                                                           |
+### This is an example of img2img:	
 
-!!! note
+~~~~
+dream> waterfall and rainbow -I./vacation-photo.png -W640 -H480 --fit
+~~~~
 
-    The width and height of the image must be multiples of 64. You can provide different
-    values, but they will be rounded down to the nearest multiple of 64.
+This will modify the indicated vacation photograph by making it more
+like the prompt. Results will vary greatly depending on what is in the
+image. We also ask to --fit the image into a box no bigger than
+640x480. Otherwise the image size will be identical to the provided
+photo and you may run out of memory if it is large.
 
-#### img2img
+In addition to the command-line options recognized by txt2img, img2img
+accepts additional options:
 
-!!! example
+| Argument           |  Shortcut  |  Default            |  Description |
+|--------------------|------------|---------------------|--------------|
+| --init_img <path>  | -I<path>   | None                | Path to the initialization image |
+| --fit              | -F         | False               | Scale the image to fit into the specified -H and -W dimensions |
+| --strength <float> | -s<float>  | 0.75                | How hard to try to match the prompt to the initial image. Ranges from 0.0-0.99, with higher values replacing the initial image completely.|
 
-    ```bash
-    dream> "waterfall and rainbow" -I./vacation-photo.png -W640 -H480 --fit
-    ```
+### This is an example of inpainting:
 
-    This will modify the indicated vacation photograph by making it more like the prompt. Results will
-    vary greatly depending on what is in the image. We also ask to --fit the image into a box no bigger
-    than 640x480. Otherwise the image size will be identical to the provided photo and you may run out
-    of memory if it is large.
+~~~~
+dream> waterfall and rainbow -I./vacation-photo.png -M./vacation-mask.png -W640 -H480 --fit
+~~~~
 
-Repeated chaining of img2img on an image can result in significant color shifts in the output,
-especially if run with lower strength. Color correction can be run against a reference image to fix
-this issue. Use the original input image to the chain as the the reference image for each step in
-the chain.
+This will do the same thing as img2img, but image alterations will
+only occur within transparent areas defined by the mask file specified
+by -M. You may also supply just a single initial image with the areas
+to overpaint made transparent, but you must be careful not to destroy
+the pixels underneath when you create the transparent areas. See
+[Inpainting](./INPAINTING.md) for details.
 
-In addition to the command-line options recognized by txt2img, img2img accepts additional options:
+inpainting accepts all the arguments used for txt2img and img2img, as
+well as the --mask (-M) argument:
 
-| Argument <img width="160" align="right"/> | Shortcut    | Default | Description                                                                                                                                |
-| ----------------------------------------- | ----------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `--init_img <path>`                       | `-I<path>`  | `None`  | Path to the initialization image                                                                                                           |
-| `--init_color <path>`                     |             | `None`  | Path to reference image for color correction                                                                                               |
-| `--fit`                                   | `-F`        | `False` | Scale the image to fit into the specified -H and -W dimensions                                                                             |
-| `--strength <float>`                      | `-f<float>` | `0.75`  | How hard to try to match the prompt to the initial image. Ranges from 0.0-0.99, with higher values replacing the initial image completely. |
+| Argument           |  Shortcut  |  Default            |  Description |
+|--------------------|------------|---------------------|--------------|
+| --init_mask <path> | -M<path>   | None                |Path to an image the same size as the initial_image, with areas for inpainting made transparent.|
 
-#### Inpainting
 
-!!! example
+# Convenience commands
 
-    ```bash
-    dream> "waterfall and rainbow" -I./vacation-photo.png -M./vacation-mask.png -W640 -H480 --fit
-    ```
+In addition to the standard image generation arguments, there are a
+series of convenience commands that begin with !:
 
-    This will do the same thing as img2img, but image alterations will only occur within transparent
-    areas defined by the mask file specified by `-M`. You may also supply just a single initial image with
-    the areas to overpaint made transparent, but you must be careful not to destroy the pixels
-    underneath when you create the transparent areas. See [Inpainting](./INPAINTING.md) for details.
+## !fix
 
-Inpainting accepts all the arguments used for txt2img and img2img, as well as the `--mask` (`-M`)
-argument:
+This command runs a post-processor on a previously-generated image. It
+takes a PNG filename or path and applies your choice of the -U, -G, or
+--embiggen switches in order to fix faces or upscale. If you provide a
+filename, the script will look for it in the current output
+directory. Otherwise you can provide a full or partial path to the
+desired file.
 
-| Argument <img width="100" align="right"/> | Shortcut   | Default | Description                                                                                      |
-| ----------------------------------------- | ---------- | ------- | ------------------------------------------------------------------------------------------------ |
-| `--init_mask <path>`                      | `-M<path>` | `None`  | Path to an image the same size as the initial_image, with areas for inpainting made transparent. |
+Some examples:
 
-## Command-line editing and completion
+Upscale to 4X its original size and fix faces using codeformer:
+~~~
+dream> !fix 0000045.4829112.png -G1 -U4 -ft codeformer
+~~~
 
-If you are on a Macintosh or Linux machine, the command-line offers convenient history tracking,
-editing, and command completion.
+Use the GFPGAN algorithm to fix faces, then upscale to 3X using --embiggen:
 
-- To scroll through previous commands and potentially edit/reuse them, use the ++up++ and ++down++
-  cursor keys.
-- To edit the current command, use the ++left++ and ++right++ cursor keys to position the cursor,
-  and then ++backspace++, ++delete++ or ++insert++ characters.
-- To move to the very beginning of the command, type ++ctrl+a++ (or ++command+a++ on the Mac)
-- To move to the end of the command, type ++ctrl+e++.
-- To cut a section of the command, position the cursor where you want to start cutting and type
-  ++ctrl+k++.
-- To paste a cut section back in, position the cursor where you want to paste, and type ++ctrl+y++
+~~~
+dream> !fix 0000045.4829112.png -G0.8 -ft gfpgan
+>> fixing outputs/img-samples/0000045.4829112.png
+>> retrieved seed 4829112 and prompt "boy enjoying a banana split"
+>> GFPGAN - Restoring Faces for image seed:4829112
+Outputs:
+[1] outputs/img-samples/000017.4829112.gfpgan-00.png: !fix "outputs/img-samples/0000045.4829112.png" -s 50 -S  -W 512 -H 512 -C 7.5 -A k_lms -G 0.8
 
-Windows users can get similar, but more limited, functionality if they launch `dream.py` with the
-"winpty" program:
+dream> !fix 000017.4829112.gfpgan-00.png --embiggen 3
+...lots of text...
+Outputs:
+[2] outputs/img-samples/000018.2273800735.embiggen-00.png: !fix "outputs/img-samples/000017.243781548.gfpgan-00.png" -s 50 -S 2273800735 -W 512 -H 512 -C 7.5 -A k_lms --embiggen 3.0 0.75 0.25
+~~~
 
-```batch
-winpty python scripts\dream.py
-```
+## !fetch
 
-On the Mac and Linux platforms, when you exit `dream.py`, the last 1000 lines of your command-line
-history will be saved. When you restart `dream.py`, you can access the saved history using the
-++up++ key.
+This command retrieves the generation parameters from a previously
+generated image and either loads them into the command line
+(Linux|Mac), or prints them out in a comment for copy-and-paste
+(Windows). You may provide either the name of a file in the current
+output directory, or a full file path.
 
-In addition, limited command-line completion is installed. In various contexts, you can start typing
-your command and press tab. A list of potential completions will be presented to you. You can then
-type a little more, hit tab again, and eventually autocomplete what you want.
+~~~
+dream> !fetch 0000015.8929913.png
+# the script returns the next line, ready for editing and running:
+dream> a fantastic alien landscape -W 576 -H 512 -s 60 -A plms -C 7.5
+~~~
 
-When specifying file paths using the one-letter shortcuts, the CLI will attempt to complete
-pathnames for you. This is most handy for the `-I` (init image) and `-M` (init mask) paths. To
-initiate completion, start the path with a slash `/` or `./`, for example:
+Note that this command may behave unexpectedly if given a PNG file that
+was not generated by InvokeAI.
 
-```bash
-dream> "zebra with a mustache" -I./test-pictures<TAB>
+## !history
+
+The dream script keeps track of all the commands you issue during a
+session, allowing you to re-run them. On Mac and Linux systems, it
+also writes the command-line history out to disk, giving you access to
+the most recent 1000 commands issued.
+
+The `!history` command will return a numbered list of all the commands
+issued during the session (Windows), or the most recent 1000 commands
+(Mac|Linux). You can then repeat a command by using the command !NNN,
+where "NNN" is the history line number. For example:
+
+~~~
+dream> !history
+...
+[14] happy woman sitting under tree wearing broad hat and flowing garment
+[15] beautiful woman sitting under tree wearing broad hat and flowing garment
+[18] beautiful woman sitting under tree wearing broad hat and flowing garment -v0.2 -n6
+[20] watercolor of beautiful woman sitting under tree wearing broad hat and flowing garment -v0.2 -n6 -S2878767194
+[21] surrealist painting of beautiful woman sitting under tree wearing broad hat and flowing garment -v0.2 -n6 -S2878767194
+...
+dream> !20
+dream> watercolor of beautiful woman sitting under tree wearing broad hat and flowing garment -v0.2 -n6 -S2878767194
+~~~
+
+# Command-line editing and completion
+
+If you are on a Macintosh or Linux machine, the command-line offers
+convenient history tracking, editing, and command completion.
+
+- To scroll through previous commands and potentially edit/reuse them, use the up and down cursor keys.
+- To edit the current command, use the left and right cursor keys to position the cursor, and then backspace, delete or insert characters.
+- To move to the very beginning of the command, type CTRL-A (or command-A on the Mac)
+- To move to the end of the command, type CTRL-E.
+- To cut a section of the command, position the cursor where you want to start cutting and type CTRL-K.
+- To paste a cut section back in, position the cursor where you want to paste, and type CTRL-Y
+
+Windows users can get similar, but more limited, functionality if they
+launch dream.py with the "winpty" program:
+
+~~~
+> winpty python scripts\dream.py
+~~~
+
+On the Mac and Linux platforms, when you exit dream.py, the last 1000
+lines of your command-line history will be saved. When you restart
+dream.py, you can access the saved history using the up-arrow key.
+
+In addition, limited command-line completion is installed. In various
+contexts, you can start typing your command and press tab. A list of
+potential completions will be presented to you. You can then type a
+little more, hit tab again, and eventually autocomplete what you want.
+
+When specifying file paths using the one-letter shortcuts, the CLI
+will attempt to complete pathnames for you. This is most handy for the
+-I (init image) and -M (init mask) paths. To initiate completion, start
+the path with a slash ("/") or "./". For example:
+
+~~~
+dream> zebra with a mustache -I./test-pictures<TAB>
 -I./test-pictures/Lincoln-and-Parrot.png  -I./test-pictures/zebra.jpg        -I./test-pictures/madonna.png
 -I./test-pictures/bad-sketch.png          -I./test-pictures/man_with_eagle/
 ```
